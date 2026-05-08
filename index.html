@@ -49,6 +49,40 @@
             box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
         }
 
+        .autocomplete-list {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: #18181b;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            overflow: hidden;
+            z-index: 9999;
+            box-shadow: 0 16px 40px -8px rgba(0,0,0,0.6);
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .autocomplete-list.open { display: block; }
+        .autocomplete-list li {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #d4d4d8;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s;
+        }
+        .autocomplete-list li:last-child { border-bottom: none; }
+        .autocomplete-list li:hover,
+        .autocomplete-list li.active { background: rgba(59,130,246,0.2); color: #fff; }
+        .autocomplete-list li .ac-icon { color: #60a5fa; flex-shrink: 0; }
+        .autocomplete-list li .ac-main { font-weight: 500; color: #fff; }
+        .autocomplete-list li .ac-sub { font-size: 0.75rem; color: #71717a; margin-left: auto; white-space: nowrap; }
+
         .favorite-pill {
             transition: all 0.2s ease;
         }
@@ -74,10 +108,12 @@
             </div>
             
             <div class="flex items-center gap-x-3 w-full max-w-md">
-                <div class="relative flex-1">
+                <div class="relative flex-1" id="search-wrapper">
                     <input id="location-input" type="text" placeholder="Enter ZIP or city..." 
-                           class="w-full bg-zinc-900 border border-white/10 text-white placeholder-zinc-400 rounded-3xl py-2.5 pl-11 pr-4 focus:outline-none focus:border-blue-500 text-sm">
+                           class="w-full bg-zinc-900 border border-white/10 text-white placeholder-zinc-400 rounded-3xl py-2.5 pl-11 pr-4 focus:outline-none focus:border-blue-500 text-sm"
+                           autocomplete="off">
                     <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-400"></i>
+                    <ul id="autocomplete-list" class="autocomplete-list"></ul>
                 </div>
                 <button id="search-btn" class="px-5 py-2.5 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors font-semibold rounded-3xl text-sm">Search</button>
                 <button id="location-btn" class="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10">
@@ -598,7 +634,96 @@
             document.getElementById('location-btn').addEventListener('click', useCurrentLocation);
             
             document.getElementById('location-input').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') searchLocation();
+                if (e.key === 'Enter') {
+                    closeAutocomplete();
+                    searchLocation();
+                }
+            });
+
+            // Autocomplete
+            let acDebounce = null;
+            let acResults = [];
+            let acIndex = -1;
+
+            const input = document.getElementById('location-input');
+            const acList = document.getElementById('autocomplete-list');
+
+            function closeAutocomplete() {
+                acList.classList.remove('open');
+                acList.innerHTML = '';
+                acResults = [];
+                acIndex = -1;
+            }
+
+            function renderAutocomplete(results) {
+                acResults = results;
+                acIndex = -1;
+                acList.innerHTML = '';
+                if (!results.length) { closeAutocomplete(); return; }
+                results.forEach((r, i) => {
+                    const city = r.address?.city || r.address?.town || r.address?.village || r.address?.county || r.name;
+                    const country = r.address?.country || '';
+                    const state = r.address?.state || '';
+                    const sub = [state, country].filter(Boolean).join(', ');
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="fa-solid fa-location-dot ac-icon"></i><span class="ac-main">${city}</span><span class="ac-sub">${sub}</span>`;
+                    li.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        input.value = city;
+                        closeAutocomplete();
+                        currentLat = parseFloat(r.lat);
+                        currentLon = parseFloat(r.lon);
+                        currentLocationName = city;
+                        fetchWeather(currentLat, currentLon, city);
+                    });
+                    acList.appendChild(li);
+                });
+                acList.classList.add('open');
+            }
+
+            input.addEventListener('input', function() {
+                clearTimeout(acDebounce);
+                const q = this.value.trim();
+                if (q.length < 2) { closeAutocomplete(); return; }
+                acDebounce = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}&limit=6`);
+                        const data = await res.json();
+                        renderAutocomplete(data);
+                    } catch (e) { closeAutocomplete(); }
+                }, 280);
+            });
+
+            input.addEventListener('keydown', function(e) {
+                const items = acList.querySelectorAll('li');
+                if (!items.length) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    acIndex = Math.min(acIndex + 1, items.length - 1);
+                    items.forEach((el, i) => el.classList.toggle('active', i === acIndex));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    acIndex = Math.max(acIndex - 1, 0);
+                    items.forEach((el, i) => el.classList.toggle('active', i === acIndex));
+                } else if (e.key === 'Enter' && acIndex >= 0) {
+                    e.preventDefault();
+                    const r = acResults[acIndex];
+                    const city = r.address?.city || r.address?.town || r.address?.village || r.address?.county || r.name;
+                    input.value = city;
+                    closeAutocomplete();
+                    currentLat = parseFloat(r.lat);
+                    currentLon = parseFloat(r.lon);
+                    currentLocationName = city;
+                    fetchWeather(currentLat, currentLon, city);
+                } else if (e.key === 'Escape') {
+                    closeAutocomplete();
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!document.getElementById('search-wrapper').contains(e.target)) {
+                    closeAutocomplete();
+                }
             });
         }
 
