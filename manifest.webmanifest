@@ -1,0 +1,19 @@
+{
+  "name": "Weather",
+  "short_name": "Weather",
+  "description": "Live weather, forecasts, and radar in an installable app.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#122033",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
