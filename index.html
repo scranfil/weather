@@ -388,35 +388,6 @@
             </div>
         </div>
 
-        <div class="mb-8 glass rounded-3xl border border-white/10 p-5 sm:p-6">
-            <div class="flex items-center justify-between mb-4">
-                <div class="section-title flex items-center gap-x-3">
-                    <i class="fa-solid fa-sun text-amber-300"></i>
-                    <span>Sun & Daylight</span>
-                </div>
-                <div id="daylight-remaining" class="text-xs text-zinc-400">--</div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-3 text-center mb-4">
-                <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
-                    <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Sunrise</div>
-                    <div id="sunrise-time" class="text-sm sm:text-base font-semibold mt-1">--:--</div>
-                </div>
-                <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
-                    <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Sunset</div>
-                    <div id="sunset-time" class="text-sm sm:text-base font-semibold mt-1">--:--</div>
-                </div>
-                <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
-                    <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Daylight</div>
-                    <div id="daylight-length" class="text-sm sm:text-base font-semibold mt-1">--</div>
-                </div>
-            </div>
-
-            <div class="daylight-track">
-                <div id="daylight-progress" class="daylight-progress"></div>
-            </div>
-        </div>
-
         <!-- Hourly Forecast -->
         <div class="mb-8">
             <div class="flex items-center justify-between mb-4 px-1">
@@ -490,7 +461,35 @@
                 </div>
             </div>
         </div>
-        
+
+        <div class="mb-8 glass rounded-3xl border border-white/10 p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="section-title flex items-center gap-x-3">
+                    <i class="fa-solid fa-sun text-amber-300"></i>
+                    <span>Sun & Daylight</span>
+                </div>
+                <div id="daylight-remaining" class="text-xs text-zinc-400">--</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 text-center mb-4">
+                <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
+                    <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Sunrise</div>
+                    <div id="sunrise-time" class="text-sm sm:text-base font-semibold mt-1">--:--</div>
+                </div>
+                <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
+                    <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Sunset</div>
+                    <div id="sunset-time" class="text-sm sm:text-base font-semibold mt-1">--:--</div>
+                </div>
+                <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
+                    <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Daylight</div>
+                    <div id="daylight-length" class="text-sm sm:text-base font-semibold mt-1">--</div>
+                </div>
+            </div>
+
+            <div class="daylight-track">
+                <div id="daylight-progress" class="daylight-progress"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -856,6 +855,7 @@
         let radarPastCount = 0;
         let radarLoopMode = 'all';
         let radarSpeedMs = 600;
+        let radarLocationMarker = null;
 
         function updateRadarMap(lat, lon) {
             if (!radarMap) {
@@ -871,6 +871,20 @@
             } else {
                 radarMap.setView([lat, lon], 7);
             }
+
+            if (radarLocationMarker) {
+                radarLocationMarker.setLatLng([lat, lon]);
+            } else {
+                radarLocationMarker = L.circleMarker([lat, lon], {
+                    radius: 8,
+                    fillColor: '#ffb347',
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                }).addTo(radarMap).bindTooltip('Your location', { permanent: false, offset: [0, -12] });
+            }
+
             loadRadarFrames();
         }
 
