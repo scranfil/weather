@@ -492,6 +492,19 @@
         </div>
     </div>
 
+    <!-- Daily Forecast Detail Modal -->
+    <div id="forecast-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-4" onclick="closeForecastModal()">
+        <div class="glass rounded-3xl border border-white/10 p-6 max-w-md w-full max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="modal-date" class="text-lg font-semibold text-white"></h3>
+                <button onclick="closeForecastModal()" class="text-zinc-400 hover:text-white">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div id="modal-content" class="space-y-4 text-sm text-zinc-200"></div>
+        </div>
+    </div>
+
     <script>
         // ==================== FAVORITES SYSTEM ====================
         let favorites = [];
@@ -817,7 +830,7 @@
                 const nightPeriod = periods[i + 1] || periods[i];
                 
                 const div = document.createElement('div');
-                div.className = `glass rounded-3xl p-5 weather-card`;
+                div.className = `glass rounded-3xl p-5 weather-card cursor-pointer hover:bg-white/5 transition-colors`;
                 
                 const date = formatDate(dayPeriod.startTime);
                 const high = dayPeriod.temperature || '--';
@@ -843,8 +856,55 @@
                         </div>
                     </div>
                 `;
+                
+                div.addEventListener('click', () => showForecastDetails(dayPeriod, nightPeriod));
+                
                 container.appendChild(div);
             }
+        }
+
+        function showForecastDetails(dayPeriod, nightPeriod) {
+            const modal = document.getElementById('forecast-modal');
+            const modalDate = document.getElementById('modal-date');
+            const modalContent = document.getElementById('modal-content');
+            
+            modalDate.textContent = formatDate(dayPeriod.startTime);
+            
+            const dayDetails = dayPeriod.detailedForecast || dayPeriod.shortForecast || 'No details available.';
+            const nightDetails = nightPeriod.detailedForecast || nightPeriod.shortForecast || 'No details available.';
+            
+            const dayPrecip = dayPeriod.probabilityOfPrecipitation?.value || 0;
+            const nightPrecip = nightPeriod.probabilityOfPrecipitation?.value || 0;
+            
+            const dayWind = dayPeriod.windSpeed ? `${dayPeriod.windSpeed} ${dayPeriod.windDirection || ''}`.trim() : 'N/A';
+            const nightWind = nightPeriod.windSpeed ? `${nightPeriod.windSpeed} ${nightPeriod.windDirection || ''}`.trim() : 'N/A';
+            
+            modalContent.innerHTML = `
+                <div class="border-b border-white/10 pb-3 mb-3">
+                    <div class="text-sm font-medium text-amber-300 mb-1">Daytime</div>
+                    <div class="text-xs text-zinc-300 mb-2">${dayDetails}</div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div><span class="text-zinc-400">High:</span> ${dayPeriod.temperature || '--'}°</div>
+                        <div><span class="text-zinc-400">Precip:</span> ${dayPrecip}%</div>
+                        <div><span class="text-zinc-400">Wind:</span> ${dayWind}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-sm font-medium text-indigo-300 mb-1">Nighttime</div>
+                    <div class="text-xs text-zinc-300 mb-2">${nightDetails}</div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div><span class="text-zinc-400">Low:</span> ${nightPeriod.temperature || '--'}°</div>
+                        <div><span class="text-zinc-400">Precip:</span> ${nightPrecip}%</div>
+                        <div><span class="text-zinc-400">Wind:</span> ${nightWind}</div>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeForecastModal() {
+            document.getElementById('forecast-modal').classList.add('hidden');
         }
 
         let radarMap = null;
