@@ -807,10 +807,17 @@
                 weekday: 'long', month: 'long', day: 'numeric' 
             });
             
-            const currentTempC = observation.temperature.value;
-            const currentTempF = cToF(currentTempC);
+            const currentTempC = observation.temperature?.value;
+            let currentTempF = null;
+            if (Number.isFinite(currentTempC)) {
+                currentTempF = cToF(currentTempC);
+            } else {
+                // observation missing — fall back to forecast temperature (forecast is in °F)
+                console.warn('Observation temperature missing or invalid, falling back to forecast temperature');
+                currentTempF = forecastPeriod.temperature || '--';
+            }
             const currentCondition = observation.textDescription || forecastPeriod.shortForecast;
-            const windMph = Math.round(observation.windSpeed.value * 2.237);
+            const windMph = observation.windSpeed && Number.isFinite(observation.windSpeed.value) ? Math.round(observation.windSpeed.value * 2.237) : '--';
             
             document.getElementById('current-temp').textContent = currentTempF;
             document.getElementById('current-condition').textContent = currentCondition;
@@ -830,12 +837,20 @@
             document.getElementById('high-temp').textContent = forecastPeriod.temperature + '°';
             document.getElementById('low-temp').textContent = (forecastPeriod.temperature - 8) + '°';
             
-            const feelsLikeC = observation.heatIndex?.value || currentTempC;
-            document.getElementById('feels-like').textContent = cToF(feelsLikeC);
-            
-            document.getElementById('wind-speed').textContent = windMph + ' mph';
-            document.getElementById('humidity').textContent = Math.round(observation.relativeHumidity.value) + '%';
-            document.getElementById('visibility').textContent = (observation.visibility.value / 1609).toFixed(1) + ' mi';
+            const feelsLikeC = observation.heatIndex?.value;
+            if (Number.isFinite(feelsLikeC)) {
+                document.getElementById('feels-like').textContent = cToF(feelsLikeC);
+            } else if (Number.isFinite(currentTempC)) {
+                document.getElementById('feels-like').textContent = cToF(currentTempC);
+            } else if (typeof currentTempF === 'number') {
+                document.getElementById('feels-like').textContent = currentTempF;
+            } else {
+                document.getElementById('feels-like').textContent = '--';
+            }
+
+            document.getElementById('wind-speed').textContent = (windMph === '--') ? '--' : (windMph + ' mph');
+            document.getElementById('humidity').textContent = observation.relativeHumidity && Number.isFinite(observation.relativeHumidity.value) ? Math.round(observation.relativeHumidity.value) + '%' : '--';
+            document.getElementById('visibility').textContent = observation.visibility && Number.isFinite(observation.visibility.value) ? (observation.visibility.value / 1609).toFixed(1) + ' mi' : '--';
             document.getElementById('uv-index').textContent = '3';
             
             const iconContainer = document.getElementById('current-icon');
