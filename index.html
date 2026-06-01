@@ -875,20 +875,33 @@
         function updateDailyForecast(periods) {
             const container = document.getElementById('daily-forecast');
             container.innerHTML = '';
-            
-            for (let i = 0; i < 14; i += 2) {
-                if (!periods[i]) break;
-                
-                const dayPeriod = periods[i];
-                const nightPeriod = periods[i + 1] || periods[i];
-                
+
+            // Group periods by calendar day so we can reliably find daytime vs nighttime entries
+            const days = [];
+            periods.forEach(p => {
+                const key = new Date(p.startTime).toDateString();
+                if (!days.length || days[days.length - 1].dateKey !== key) {
+                    days.push({ dateKey: key, periods: [p] });
+                } else {
+                    days[days.length - 1].periods.push(p);
+                }
+            });
+
+            days.slice(0, 7).forEach(day => {
+                // Prefer the entry flagged as daytime for the 'day' period
+                const dayPeriod = day.periods.find(p => p.isDaytime) || day.periods[0];
+                const nightPeriod = day.periods.find(p => !p.isDaytime) || day.periods[1] || day.periods[0];
+
+                // Compute high/low defensively in case the feed orders differently
+                const temps = [Number(dayPeriod.temperature), Number(nightPeriod.temperature)].filter(t => Number.isFinite(t));
+                const high = temps.length ? Math.max(...temps) : '--';
+                const low = temps.length ? Math.min(...temps) : '--';
+
+                const date = formatDate(dayPeriod.startTime);
+                const condition = (dayPeriod && dayPeriod.shortForecast) || (nightPeriod && nightPeriod.shortForecast) || 'N/A';
+
                 const div = document.createElement('div');
                 div.className = `glass rounded-3xl p-5 weather-card cursor-pointer hover:bg-white/5 transition-colors`;
-                
-                const date = formatDate(dayPeriod.startTime);
-                const high = dayPeriod.temperature || '--';
-                const low = nightPeriod.temperature || '--';
-                const condition = dayPeriod.shortForecast || 'N/A';
 
                 const top = document.createElement('div');
                 top.className = 'flex justify-between items-start mb-4';
@@ -899,7 +912,7 @@
                 dateEl.textContent = date;
                 const nameEl = document.createElement('div');
                 nameEl.className = 'text-xs text-zinc-400';
-                nameEl.textContent = dayPeriod.name;
+                nameEl.textContent = dayPeriod.name || '';
                 left.appendChild(dateEl);
                 left.appendChild(nameEl);
 
@@ -907,10 +920,10 @@
                 right.className = 'text-right';
                 const highEl = document.createElement('div');
                 highEl.className = 'text-4xl font-bold text-white';
-                highEl.textContent = `${high}°`;
+                highEl.textContent = (high === '--') ? '--' : `${high}°`;
                 const lowEl = document.createElement('div');
                 lowEl.className = 'text-xs text-zinc-500 mt-0.5';
-                lowEl.textContent = `${low}°`;
+                lowEl.textContent = (low === '--') ? '--' : `${low}°`;
                 right.appendChild(highEl);
                 right.appendChild(lowEl);
 
@@ -942,7 +955,7 @@
                 div.addEventListener('click', () => showForecastDetails(dayPeriod, nightPeriod));
 
                 container.appendChild(div);
-            }
+            });
         }
 
         function showForecastDetails(dayPeriod, nightPeriod) {
