@@ -673,6 +673,7 @@
             refreshFavoritesTemps().catch(() => {});
 
             showToast('Added to favorites', 'success', 1500);
+        }
 
         // Refresh favorites temperatures with observation first, then forecastHourly fallback
         async function refreshFavoritesTemps() {
@@ -736,7 +737,6 @@
 
             // Re-render to show updated temps
             renderFavorites();
-        }
         }
 
         function removeFavorite(index) {
