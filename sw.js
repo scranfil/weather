@@ -23,41 +23,36 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
 
   const reqUrl = new URL(event.request.url);
   const isSameOrigin = reqUrl.origin === self.location.origin;
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
+      fetch(event.request).then(response => {
+        if (response && response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
-          return response;
-        })
-        .catch(() => caches.match('./index.html'))
+        }
+        return response;
+      }).catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  if (!isSameOrigin) {
-    return;
-  }
+  if (!isSameOrigin) return;
 
   event.respondWith(
     caches.match(event.request).then(cached => {
-      if (cached) {
-        return cached;
-      }
-
+      if (cached) return cached;
       return fetch(event.request).then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        if (response && response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        }
         return response;
-      });
+      }).catch(() => caches.match('./index.html'));
     })
   );
 });

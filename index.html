@@ -555,7 +555,13 @@
             const toast = document.createElement('div');
             const textClass = type === 'warning' ? 'text-zinc-900' : 'text-white';
             toast.className = `${styles[type] || styles.info} ${textClass} px-4 py-2.5 rounded-2xl text-sm flex items-center gap-x-2 shadow-xl border border-white/10 pointer-events-auto`;
-            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${message}</span>`;
+            const iconEl = document.createElement('i');
+            iconEl.className = `fa-solid ${icons[type] || icons.info}`;
+            iconEl.setAttribute('aria-hidden', 'true');
+            const msgSpan = document.createElement('span');
+            msgSpan.textContent = message;
+            toast.appendChild(iconEl);
+            toast.appendChild(msgSpan);
             toastContainer.appendChild(toast);
 
             setTimeout(() => {
@@ -578,21 +584,32 @@
                     `<i class="fa-solid fa-home text-emerald-400"></i>` : 
                     `<i class="fa-solid fa-map-marker-alt text-blue-400"></i>`;
                 
-                pill.innerHTML = `
-                    <div class="flex items-center gap-x-2">
-                        ${icon}
-                        <div>
-                            <div class="font-medium text-white">${fav.name}</div>
-                            <div class="flex items-center gap-x-1 text-xs">
-                                <span class="font-semibold text-orange-400">${fav.temp || '--'}°</span>
-                            </div>
-                        </div>
-                    </div>
-                    <button onclick="event.stopImmediatePropagation(); removeFavorite(${index});" 
-                            class="ml-1 w-5 h-5 flex items-center justify-center text-zinc-500 hover:text-red-400 transition-colors">
-                        <i class="fa-solid fa-times text-xs"></i>
-                    </button>
-                `;
+                // Build pill safely
+                pill.innerHTML = '';
+                const left = document.createElement('div');
+                left.className = 'flex items-center gap-x-2';
+                const iconEl = document.createElement('i');
+                iconEl.className = fav.isHome ? 'fa-solid fa-home text-emerald-400' : 'fa-solid fa-map-marker-alt text-blue-400';
+                const nameWrap = document.createElement('div');
+                const nameEl = document.createElement('div');
+                nameEl.className = 'font-medium text-white';
+                nameEl.textContent = fav.name;
+                const subRow = document.createElement('div');
+                subRow.className = 'flex items-center gap-x-1 text-xs';
+                const tempSpan = document.createElement('span');
+                tempSpan.className = 'font-semibold text-orange-400';
+                tempSpan.textContent = `${fav.temp || '--'}°`;
+                subRow.appendChild(tempSpan);
+                nameWrap.appendChild(nameEl);
+                nameWrap.appendChild(subRow);
+                left.appendChild(iconEl);
+                left.appendChild(nameWrap);
+                const btn = document.createElement('button');
+                btn.className = 'ml-1 w-5 h-5 flex items-center justify-center text-zinc-500 hover:text-red-400 transition-colors';
+                btn.innerHTML = '<i class="fa-solid fa-times text-xs"></i>';
+                btn.onclick = (e) => { e.stopImmediatePropagation(); removeFavorite(index); };
+                pill.appendChild(left);
+                pill.appendChild(btn);
                 
                 // Click to load location
                 pill.onclick = () => {
@@ -608,12 +625,16 @@
             // Add "+" button at the end
             const addBtn = document.createElement('div');
             addBtn.className = `flex-shrink-0 snap-start flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-white/10 px-4 py-2 rounded-3xl text-sm cursor-pointer text-blue-400`;
-            addBtn.innerHTML = `
-                <div class="flex items-center gap-x-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span class="font-medium">Add</span>
-                </div>
-            `;
+            const addInner = document.createElement('div');
+            addInner.className = 'flex items-center gap-x-2';
+            const plusIcon = document.createElement('i');
+            plusIcon.className = 'fa-solid fa-plus';
+            const addText = document.createElement('span');
+            addText.className = 'font-medium';
+            addText.textContent = 'Add';
+            addInner.appendChild(plusIcon);
+            addInner.appendChild(addText);
+            addBtn.appendChild(addInner);
             addBtn.onclick = () => addCurrentToFavorites();
             container.appendChild(addBtn);
         }
@@ -685,22 +706,30 @@
         }
 
         function getWeatherIcon(condition, isDay = true) {
-            condition = condition.toLowerCase();
-            if (condition.includes('sunny') || condition.includes('clear')) {
-                return isDay ? '<i class="fa-solid fa-sun text-yellow-300"></i>' : '<i class="fa-solid fa-moon text-indigo-300"></i>';
-            } else if (condition.includes('partly cloudy') || condition.includes('mostly cloudy')) {
-                return '<i class="fa-solid fa-cloud-sun text-blue-300"></i>';
-            } else if (condition.includes('cloudy')) {
-                return '<i class="fa-solid fa-cloud text-zinc-300"></i>';
-            } else if (condition.includes('rain') || condition.includes('shower')) {
-                return '<i class="fa-solid fa-cloud-rain text-blue-400"></i>';
-            } else if (condition.includes('thunder') || condition.includes('storm')) {
-                return '<i class="fa-solid fa-cloud-bolt text-yellow-400"></i>';
-            } else if (condition.includes('snow')) {
-                return '<i class="fa-solid fa-snowflake text-sky-300"></i>';
-            }
-            return '<i class="fa-solid fa-cloud text-zinc-300"></i>';
-        }
+                    const iconEl = document.createElement('i');
+                    iconEl.setAttribute('aria-hidden', 'true');
+                    if (!condition) {
+                        iconEl.className = 'fa-solid fa-cloud text-zinc-300';
+                        return iconEl;
+                    }
+                    condition = condition.toLowerCase();
+                    if (condition.includes('sunny') || condition.includes('clear')) {
+                        iconEl.className = isDay ? 'fa-solid fa-sun text-yellow-300' : 'fa-solid fa-moon text-indigo-300';
+                    } else if (condition.includes('partly cloudy') || condition.includes('mostly cloudy')) {
+                        iconEl.className = 'fa-solid fa-cloud-sun text-blue-300';
+                    } else if (condition.includes('cloudy')) {
+                        iconEl.className = 'fa-solid fa-cloud text-zinc-300';
+                    } else if (condition.includes('rain') || condition.includes('shower')) {
+                        iconEl.className = 'fa-solid fa-cloud-rain text-blue-400';
+                    } else if (condition.includes('thunder') || condition.includes('storm')) {
+                        iconEl.className = 'fa-solid fa-cloud-bolt text-yellow-400';
+                    } else if (condition.includes('snow')) {
+                        iconEl.className = 'fa-solid fa-snowflake text-sky-300';
+                    } else {
+                        iconEl.className = 'fa-solid fa-cloud text-zinc-300';
+                    }
+                    return iconEl;
+                }
 
         function formatDate(dateStr) {
             return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -710,11 +739,24 @@
             return Math.round((celsius * 9/5) + 32);
         }
 
-        async function fetchWeather(lat, lon, locationName = null) {
+        async function fetchWithTimeout(resource, options = {}, timeout = 10000) {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), timeout);
+                try {
+                    const res = await fetch(resource, { signal: controller.signal, ...options });
+                    clearTimeout(id);
+                    return res;
+                } catch (e) {
+                    clearTimeout(id);
+                    throw e;
+                }
+            }
+
+            async function fetchWeather(lat, lon, locationName = null) {
             try {
                 document.getElementById('current-weather').style.opacity = '0.6';
                 
-                const pointsResponse = await fetch(`https://api.weather.gov/points/${lat},${lon}`);
+                const pointsResponse = await fetchWithTimeout(`https://api.weather.gov/points/${lat},${lon}`, {}, 10000);
                 if (!pointsResponse.ok) throw new Error('Failed to get location data');
                 const pointsData = await pointsResponse.json();
                 
@@ -722,16 +764,16 @@
                 const forecastHourlyUrl = pointsData.properties.forecastHourly;
                 const stationUrl = pointsData.properties.observationStations;
                 
-                const stationsResponse = await fetch(stationUrl);
+                const stationsResponse = await fetchWithTimeout(stationUrl, {}, 10000);
                 const stationsData = await stationsResponse.json();
                 const firstStation = stationsData.features[0].id.split('/').pop();
                 
-                const observationResponse = await fetch(`https://api.weather.gov/stations/${firstStation}/observations/latest`);
+                const observationResponse = await fetchWithTimeout(`https://api.weather.gov/stations/${firstStation}/observations/latest`, {}, 10000);
                 const observationData = await observationResponse.json();
                 
                 const [forecastRes, hourlyRes] = await Promise.all([
-                    fetch(forecastUrl),
-                    fetch(forecastHourlyUrl)
+                    fetchWithTimeout(forecastUrl, {}, 10000),
+                    fetchWithTimeout(forecastHourlyUrl, {}, 10000)
                 ]);
                 
                 const forecastData = await forecastRes.json();
@@ -760,8 +802,8 @@
         }
 
         function updateCurrentWeather(observation, forecastPeriod, locationName) {
-            document.getElementById('location-name').innerHTML = locationName;
-            document.getElementById('current-date').innerHTML = new Date().toLocaleDateString('en-US', { 
+            document.getElementById('location-name').textContent = locationName;
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', month: 'long', day: 'numeric' 
             });
             
@@ -770,8 +812,8 @@
             const currentCondition = observation.textDescription || forecastPeriod.shortForecast;
             const windMph = Math.round(observation.windSpeed.value * 2.237);
             
-            document.getElementById('current-temp').innerHTML = currentTempF;
-            document.getElementById('current-condition').innerHTML = currentCondition;
+            document.getElementById('current-temp').textContent = currentTempF;
+            document.getElementById('current-condition').textContent = currentCondition;
             
             let summary = currentCondition + ". ";
             if (windMph < 8) summary += "Light winds. ";
@@ -783,21 +825,22 @@
             else if (currentTempF >= 45) summary += "Cool and crisp.";
             else summary += "Chilly conditions.";
             
-            document.getElementById('weather-summary').innerHTML = summary;
+            document.getElementById('weather-summary').textContent = summary;
             
-            document.getElementById('high-temp').innerHTML = forecastPeriod.temperature + '°';
-            document.getElementById('low-temp').innerHTML = (forecastPeriod.temperature - 8) + '°';
+            document.getElementById('high-temp').textContent = forecastPeriod.temperature + '°';
+            document.getElementById('low-temp').textContent = (forecastPeriod.temperature - 8) + '°';
             
             const feelsLikeC = observation.heatIndex?.value || currentTempC;
-            document.getElementById('feels-like').innerHTML = cToF(feelsLikeC);
+            document.getElementById('feels-like').textContent = cToF(feelsLikeC);
             
-            document.getElementById('wind-speed').innerHTML = windMph + ' mph';
-            document.getElementById('humidity').innerHTML = Math.round(observation.relativeHumidity.value) + '%';
-            document.getElementById('visibility').innerHTML = (observation.visibility.value / 1609).toFixed(1) + ' mi';
-            document.getElementById('uv-index').innerHTML = '3';
+            document.getElementById('wind-speed').textContent = windMph + ' mph';
+            document.getElementById('humidity').textContent = Math.round(observation.relativeHumidity.value) + '%';
+            document.getElementById('visibility').textContent = (observation.visibility.value / 1609).toFixed(1) + ' mi';
+            document.getElementById('uv-index').textContent = '3';
             
             const iconContainer = document.getElementById('current-icon');
-            iconContainer.innerHTML = getWeatherIcon(currentCondition, true);
+            iconContainer.innerHTML = '';
+            iconContainer.appendChild(getWeatherIcon(currentCondition, true));
         }
 
         function updateHourlyForecast(periods) {
@@ -809,12 +852,22 @@
                 
                 const div = document.createElement('div');
                 div.className = `min-w-[92px] flex-shrink-0 glass rounded-2xl p-4 text-center weather-card`;
-                div.innerHTML = `
-                    <div class="text-xs text-zinc-400 mb-1">${time}</div>
-                    <div class="text-4xl mb-3">${getWeatherIcon(period.shortForecast)}</div>
-                    <div class="font-semibold text-2xl">${period.temperature || '--'}°</div>
-                    <div class="text-xs text-blue-300 mt-1">${period.probabilityOfPrecipitation?.value || 0}%</div>
-                `;
+                const timeEl = document.createElement('div');
+                timeEl.className = 'text-xs text-zinc-400 mb-1';
+                timeEl.textContent = time;
+                const iconWrap = document.createElement('div');
+                iconWrap.className = 'text-4xl mb-3';
+                iconWrap.appendChild(getWeatherIcon(period.shortForecast));
+                const tempEl = document.createElement('div');
+                tempEl.className = 'font-semibold text-2xl';
+                tempEl.textContent = `${period.temperature || '--'}°`;
+                const probEl = document.createElement('div');
+                probEl.className = 'text-xs text-blue-300 mt-1';
+                probEl.textContent = `${period.probabilityOfPrecipitation?.value || 0}%`;
+                div.appendChild(timeEl);
+                div.appendChild(iconWrap);
+                div.appendChild(tempEl);
+                div.appendChild(probEl);
                 container.appendChild(div);
             });
         }
@@ -836,29 +889,58 @@
                 const high = dayPeriod.temperature || '--';
                 const low = nightPeriod.temperature || '--';
                 const condition = dayPeriod.shortForecast || 'N/A';
-                
-                div.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <div class="font-semibold">${date}</div>
-                            <div class="text-xs text-zinc-400">${dayPeriod.name}</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-4xl font-bold text-white">${high}°</div>
-                            <div class="text-xs text-zinc-500 mt-0.5">${low}°</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-5xl">${getWeatherIcon(condition)}</div>
-                        <div class="text-right text-sm">
-                            <div class="font-medium">${condition}</div>
-                            <div class="text-xs text-blue-300 mt-1">${dayPeriod.probabilityOfPrecipitation?.value || 10}% chance</div>
-                        </div>
-                    </div>
-                `;
-                
+
+                const top = document.createElement('div');
+                top.className = 'flex justify-between items-start mb-4';
+
+                const left = document.createElement('div');
+                const dateEl = document.createElement('div');
+                dateEl.className = 'font-semibold';
+                dateEl.textContent = date;
+                const nameEl = document.createElement('div');
+                nameEl.className = 'text-xs text-zinc-400';
+                nameEl.textContent = dayPeriod.name;
+                left.appendChild(dateEl);
+                left.appendChild(nameEl);
+
+                const right = document.createElement('div');
+                right.className = 'text-right';
+                const highEl = document.createElement('div');
+                highEl.className = 'text-4xl font-bold text-white';
+                highEl.textContent = `${high}°`;
+                const lowEl = document.createElement('div');
+                lowEl.className = 'text-xs text-zinc-500 mt-0.5';
+                lowEl.textContent = `${low}°`;
+                right.appendChild(highEl);
+                right.appendChild(lowEl);
+
+                top.appendChild(left);
+                top.appendChild(right);
+
+                const bottom = document.createElement('div');
+                bottom.className = 'flex items-center justify-between';
+                const iconWrap = document.createElement('div');
+                iconWrap.className = 'text-5xl';
+                iconWrap.appendChild(getWeatherIcon(condition));
+                const info = document.createElement('div');
+                info.className = 'text-right text-sm';
+                const condEl = document.createElement('div');
+                condEl.className = 'font-medium';
+                condEl.textContent = condition;
+                const precipEl = document.createElement('div');
+                precipEl.className = 'text-xs text-blue-300 mt-1';
+                precipEl.textContent = `${dayPeriod.probabilityOfPrecipitation?.value || 10}% chance`;
+                info.appendChild(condEl);
+                info.appendChild(precipEl);
+
+                bottom.appendChild(iconWrap);
+                bottom.appendChild(info);
+
+                div.appendChild(top);
+                div.appendChild(bottom);
+
                 div.addEventListener('click', () => showForecastDetails(dayPeriod, nightPeriod));
-                
+
                 container.appendChild(div);
             }
         }
@@ -879,26 +961,57 @@
             const dayWind = dayPeriod.windSpeed ? `${dayPeriod.windSpeed} ${dayPeriod.windDirection || ''}`.trim() : 'N/A';
             const nightWind = nightPeriod.windSpeed ? `${nightPeriod.windSpeed} ${nightPeriod.windDirection || ''}`.trim() : 'N/A';
             
-            modalContent.innerHTML = `
-                <div class="border-b border-white/10 pb-3 mb-3">
-                    <div class="text-sm font-medium text-amber-300 mb-1">Daytime</div>
-                    <div class="text-xs text-zinc-300 mb-2">${dayDetails}</div>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div><span class="text-zinc-400">High:</span> ${dayPeriod.temperature || '--'}°</div>
-                        <div><span class="text-zinc-400">Precip:</span> ${dayPrecip}%</div>
-                        <div><span class="text-zinc-400">Wind:</span> ${dayWind}</div>
-                    </div>
-                </div>
-                <div>
-                    <div class="text-sm font-medium text-indigo-300 mb-1">Nighttime</div>
-                    <div class="text-xs text-zinc-300 mb-2">${nightDetails}</div>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div><span class="text-zinc-400">Low:</span> ${nightPeriod.temperature || '--'}°</div>
-                        <div><span class="text-zinc-400">Precip:</span> ${nightPrecip}%</div>
-                        <div><span class="text-zinc-400">Wind:</span> ${nightWind}</div>
-                    </div>
-                </div>
-            `;
+            // Build modal content safely
+            modalContent.innerHTML = '';
+            const daySection = document.createElement('div');
+            daySection.className = 'border-b border-white/10 pb-3 mb-3';
+            const dayTitle = document.createElement('div');
+            dayTitle.className = 'text-sm font-medium text-amber-300 mb-1';
+            dayTitle.textContent = 'Daytime';
+            const dayText = document.createElement('div');
+            dayText.className = 'text-xs text-zinc-300 mb-2';
+            dayText.textContent = dayDetails;
+            const dayGrid = document.createElement('div');
+            dayGrid.className = 'grid grid-cols-2 gap-2 text-xs';
+            dayGrid.innerHTML = '';
+            const dg1 = document.createElement('div');
+            dg1.innerHTML = `<span class="text-zinc-400">High:</span> ${dayPeriod.temperature || '--'}°`;
+            const dg2 = document.createElement('div');
+            dg2.innerHTML = `<span class="text-zinc-400">Precip:</span> ${dayPrecip}%`;
+            const dg3 = document.createElement('div');
+            dg3.innerHTML = `<span class="text-zinc-400">Wind:</span> ${dayWind}`;
+            dayGrid.appendChild(dg1);
+            dayGrid.appendChild(dg2);
+            dayGrid.appendChild(dg3);
+            daySection.appendChild(dayTitle);
+            daySection.appendChild(dayText);
+            daySection.appendChild(dayGrid);
+
+            const nightSection = document.createElement('div');
+            const nightTitle = document.createElement('div');
+            nightTitle.className = 'text-sm font-medium text-indigo-300 mb-1';
+            nightTitle.textContent = 'Nighttime';
+            const nightText = document.createElement('div');
+            nightText.className = 'text-xs text-zinc-300 mb-2';
+            nightText.textContent = nightDetails;
+            const nightGrid = document.createElement('div');
+            nightGrid.className = 'grid grid-cols-2 gap-2 text-xs';
+            nightGrid.innerHTML = '';
+            const ng1 = document.createElement('div');
+            ng1.innerHTML = `<span class="text-zinc-400">Low:</span> ${nightPeriod.temperature || '--'}°`;
+            const ng2 = document.createElement('div');
+            ng2.innerHTML = `<span class="text-zinc-400">Precip:</span> ${nightPrecip}%`;
+            const ng3 = document.createElement('div');
+            ng3.innerHTML = `<span class="text-zinc-400">Wind:</span> ${nightWind}`;
+            nightGrid.appendChild(ng1);
+            nightGrid.appendChild(ng2);
+            nightGrid.appendChild(ng3);
+            nightSection.appendChild(nightTitle);
+            nightSection.appendChild(nightText);
+            nightSection.appendChild(nightGrid);
+
+            modalContent.appendChild(daySection);
+            modalContent.appendChild(nightSection);
             
             modal.classList.remove('hidden');
         }
@@ -950,7 +1063,7 @@
 
         async function loadRadarFrames() {
             try {
-                const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                const res = await fetchWithTimeout('https://api.rainviewer.com/public/weather-maps.json', {}, 8000);
                 const data = await res.json();
                 const host = data.host;
                 const past = (data.radar.past || []).slice(-7); // last ~70 min
@@ -1093,7 +1206,7 @@
 
         async function fetchAndUpdateAlerts(lat, lon) {
             try {
-                const res = await fetch(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
+                const res = await fetchWithTimeout(`https://api.weather.gov/alerts/active?point=${lat},${lon}`, {}, 8000);
                 if (!res.ok) throw new Error('Alert fetch failed');
                 const data = await res.json();
                 const features = data.features || [];
@@ -1150,23 +1263,70 @@
 
                 const detailId = `alert-detail-${idx}`;
 
-                card.innerHTML = `
-                    <div class="flex items-center justify-between gap-3 mb-1">
-                        <div class="text-sm font-semibold text-orange-100">${event}</div>
-                        <div class="flex items-center gap-2">
-                            <div class="text-[11px] uppercase tracking-wide text-zinc-300">${severity}</div>
-                            <i class="fa-solid fa-chevron-down text-zinc-400 text-xs transition-transform duration-300 alert-chevron"></i>
-                        </div>
-                    </div>
-                    <div class="text-sm text-zinc-200 leading-snug mb-2">${headline}</div>
-                    <div class="text-[11px] text-zinc-400">Issued ${timeText}${expiresText ? ` &mdash; Expires ${expiresText}` : ''}</div>
-                    <div id="${detailId}" class="alert-detail overflow-hidden max-h-0 transition-all duration-300 ease-in-out">
-                        <div class="mt-3 pt-3 border-t border-white/10 space-y-3">
-                            ${areaDesc ? `<div><div class="text-[11px] uppercase tracking-wide text-zinc-400 mb-1">Affected Areas</div><div class="text-xs text-zinc-300 leading-relaxed">${areaDesc}</div></div>` : ''}
-                            ${description ? `<div><div class="text-[11px] uppercase tracking-wide text-zinc-400 mb-1">Details</div><div class="text-xs text-zinc-300 leading-relaxed whitespace-pre-line">${description}</div></div>` : ''}
-                        </div>
-                    </div>
-                `;
+                // Build alert card safely
+                card.innerHTML = '';
+                const header = document.createElement('div');
+                header.className = 'flex items-center justify-between gap-3 mb-1';
+                const eventEl = document.createElement('div');
+                eventEl.className = 'text-sm font-semibold text-orange-100';
+                eventEl.textContent = event;
+                const rightHeader = document.createElement('div');
+                rightHeader.className = 'flex items-center gap-2';
+                const sevEl = document.createElement('div');
+                sevEl.className = 'text-[11px] uppercase tracking-wide text-zinc-300';
+                sevEl.textContent = severity;
+                const chevron = document.createElement('i');
+                chevron.className = 'fa-solid fa-chevron-down text-zinc-400 text-xs transition-transform duration-300 alert-chevron';
+                rightHeader.appendChild(sevEl);
+                rightHeader.appendChild(chevron);
+                header.appendChild(eventEl);
+                header.appendChild(rightHeader);
+
+                const headLineEl = document.createElement('div');
+                headLineEl.className = 'text-sm text-zinc-200 leading-snug mb-2';
+                headLineEl.textContent = headline;
+
+                const issuedEl = document.createElement('div');
+                issuedEl.className = 'text-[11px] text-zinc-400';
+                issuedEl.textContent = `Issued ${timeText}${expiresText ? ` — Expires ${expiresText}` : ''}`;
+
+                const detailWrap = document.createElement('div');
+                detailWrap.id = detailId;
+                detailWrap.className = 'alert-detail overflow-hidden max-h-0 transition-all duration-300 ease-in-out';
+                const inner = document.createElement('div');
+                inner.className = 'mt-3 pt-3 border-t border-white/10 space-y-3';
+
+                if (areaDesc) {
+                    const areaBlock = document.createElement('div');
+                    const areaTitle = document.createElement('div');
+                    areaTitle.className = 'text-[11px] uppercase tracking-wide text-zinc-400 mb-1';
+                    areaTitle.textContent = 'Affected Areas';
+                    const areaText = document.createElement('div');
+                    areaText.className = 'text-xs text-zinc-300 leading-relaxed';
+                    areaText.textContent = areaDesc;
+                    areaBlock.appendChild(areaTitle);
+                    areaBlock.appendChild(areaText);
+                    inner.appendChild(areaBlock);
+                }
+                if (description) {
+                    const descBlock = document.createElement('div');
+                    const descTitle = document.createElement('div');
+                    descTitle.className = 'text-[11px] uppercase tracking-wide text-zinc-400 mb-1';
+                    descTitle.textContent = 'Details';
+                    const descText = document.createElement('div');
+                    descText.className = 'text-xs text-zinc-300 leading-relaxed whitespace-pre-line';
+                    descText.textContent = description;
+                    descBlock.appendChild(descTitle);
+                    descBlock.appendChild(descText);
+                    inner.appendChild(descBlock);
+                }
+
+                detailWrap.appendChild(inner);
+
+                card.appendChild(header);
+                card.appendChild(headLineEl);
+                card.appendChild(issuedEl);
+                card.appendChild(detailWrap);
 
                 card.addEventListener('click', () => {
                     const detail = document.getElementById(detailId);
@@ -1187,7 +1347,7 @@
 
         async function fetchAndUpdateSunData(lat, lon) {
             try {
-                const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
+                const res = await fetchWithTimeout(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`, {}, 8000);
                 if (!res.ok) throw new Error('Sun data failed');
                 const data = await res.json();
                 if (!data.results) throw new Error('No sun results');
@@ -1253,7 +1413,7 @@
             if (!input) return;
             
             try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&limit=1`);
+                const response = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&limit=1`, {}, 8000);
                 const data = await response.json();
                 
                 if (data.length > 0) {
@@ -1289,9 +1449,9 @@
                 currentLon = lon;
                 
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                    const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {}, 8000);
                     const geoData = await res.json();
-                    currentLocationName = geoData.address.city || geoData.address.town || "Current Location";
+                    currentLocationName = geoData.address?.city || geoData.address?.town || "Current Location";
                 } catch (e) {
                     currentLocationName = "Current Location";
                 }
@@ -1311,7 +1471,7 @@
             renderFavorites();
             
             // Load default weather
-            document.getElementById('location-name').innerHTML = currentLocationName;
+            document.getElementById('location-name').textContent = currentLocationName;
             fetchWeather(currentLat, currentLon, currentLocationName);
             
             // Button listeners
@@ -1373,7 +1533,18 @@
                     const state = r.address?.state || '';
                     const sub = [state, country].filter(Boolean).join(', ');
                     const li = document.createElement('li');
-                    li.innerHTML = `<i class="fa-solid fa-location-dot ac-icon"></i><span class="ac-main">${city}</span><span class="ac-sub">${sub}</span>`;
+                    // Build autocomplete item safely
+                    const icon = document.createElement('i');
+                    icon.className = 'fa-solid fa-location-dot ac-icon';
+                    const main = document.createElement('span');
+                    main.className = 'ac-main';
+                    main.textContent = city;
+                    const subEl = document.createElement('span');
+                    subEl.className = 'ac-sub';
+                    subEl.textContent = sub;
+                    li.appendChild(icon);
+                    li.appendChild(main);
+                    li.appendChild(subEl);
                     li.addEventListener('mousedown', (e) => {
                         e.preventDefault();
                         input.value = city;
@@ -1394,7 +1565,7 @@
                 if (q.length < 2) { closeAutocomplete(); return; }
                 acDebounce = setTimeout(async () => {
                     try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}&limit=6`);
+                        const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}&limit=6`, {}, 8000);
                         const data = await res.json();
                         renderAutocomplete(data);
                     } catch (e) { closeAutocomplete(); }
