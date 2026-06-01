@@ -1403,9 +1403,40 @@
         }
 
         // Update temperatures in favorites bar after loading weather
-        function updateFavoriteTemps() {
-            // This would ideally fetch temps for all favorites, but for simplicity we skip it
-            // In a production app you could batch fetch here
+        async function updateFavoriteTemps() {
+            if (!favorites || !favorites.length) return;
+
+            // Fetch current temperature for each favorite concurrently (with timeouts).
+            await Promise.all(favorites.map(async (fav) => {
+                try {
+                    // Get point metadata
+                    const pointsRes = await fetchWithTimeout(`https://api.weather.gov/points/${fav.lat},${fav.lon}`, {}, 8000);
+                    if (!pointsRes.ok) throw new Error('points fetch failed');
+                    const pointsData = await pointsRes.json();
+
+                    const stationUrl = pointsData.properties.observationStations;
+                    if (!stationUrl) throw new Error('no stations');
+
+                    const stationsRes = await fetchWithTimeout(stationUrl, {}, 8000);
+                    if (!stationsRes.ok) throw new Error('stations fetch failed');
+                    const stationsData = await stationsRes.json();
+                    const firstStation = stationsData.features && stationsData.features[0] && stationsData.features[0].id.split('/').pop();
+                    if (!firstStation) throw new Error('no station id');
+
+                    const obsRes = await fetchWithTimeout(`https://api.weather.gov/stations/${firstStation}/observations/latest`, {}, 8000);
+                    if (!obsRes.ok) throw new Error('observation fetch failed');
+                    const obsData = await obsRes.json();
+
+                    const tempC = obsData.properties?.temperature?.value;
+                    fav.temp = Number.isFinite(tempC) ? cToF(tempC) : '--';
+                } catch (e) {
+                    // On failure, show placeholder
+                    fav.temp = '--';
+                }
+            }));
+
+            // Re-render favorites so the UI updates
+            renderFavorites();
         }
 
         async function searchLocation() {
