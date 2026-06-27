@@ -340,6 +340,10 @@
                     <i class="fa-solid fa-location-crosshairs"></i>
                     <span class="hidden sm:inline">My Location</span>
                 </button>
+                <button id="share-btn" class="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10" title="Share this app">
+                    <i class="fa-solid fa-share-from-square"></i>
+                    <span class="hidden sm:inline">Share</span>
+                </button>
                 <button id="install-btn" class="hidden px-4 py-2.5 bg-blue-600 hover:bg-blue-500 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-blue-400/40">
                     <i class="fa-solid fa-download"></i>
                     <span class="hidden sm:inline">Install</span>
@@ -2168,6 +2172,7 @@
             // Button listeners
             document.getElementById('search-btn').addEventListener('click', searchLocation);
             document.getElementById('location-btn').addEventListener('click', useCurrentLocation);
+            document.getElementById('share-btn').addEventListener('click', shareApp);
             document.getElementById('radar-play-btn').addEventListener('click', toggleRadarPlay);
             document.getElementById('radar-lightning-btn').addEventListener('click', toggleLightningLayer);
             document.getElementById('radar-now-btn').addEventListener('click', moveToLatestObservedFrame);
@@ -2320,6 +2325,53 @@
             const el = document.getElementById('last-updated');
             if (el) el.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         };
+
+        function getAppShareUrl() {
+            const path = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/?$/, '/');
+            return `${window.location.origin}${path}`;
+        }
+
+        function getAppShareText() {
+            const url = getAppShareUrl();
+            const temp = document.getElementById('current-temp')?.textContent;
+            const condition = document.getElementById('current-condition')?.textContent;
+            const location = currentLocationName;
+
+            if (temp && condition && location && location !== 'Getting your location...') {
+                return `Right now in ${location}: ${temp}° and ${condition}.\n\nCheck out this weather app for live forecasts, radar, and alerts:\n${url}`;
+            }
+            return `Check out this weather app for live forecasts, radar, and alerts:\n${url}`;
+        }
+
+        async function shareApp() {
+            const url = getAppShareUrl();
+            const text = getAppShareText();
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Weather App',
+                        text
+                    });
+                    return;
+                } catch (err) {
+                    if (err?.name === 'AbortError') return;
+                }
+            }
+
+            const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+            if (isMobile) {
+                window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast('Copied — paste into a text message to share.', 'success', 2800);
+            } catch (e) {
+                showToast(text, 'info', 5000);
+            }
+        }
 
         let deferredInstallPrompt = null;
         const installBtn = document.getElementById('install-btn');
