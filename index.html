@@ -293,7 +293,7 @@
             }
 
             #radar-map {
-                height: 300px !important;
+                height: 340px !important;
             }
 
             .radar-controls {
@@ -485,22 +485,27 @@
             </div>
             
             <div class="radar-container glass rounded-3xl overflow-hidden border border-white/10">
-                <div id="radar-map" style="height: 400px; width: 100%;"></div>
+                <div id="radar-map" style="height: 480px; width: 100%;"></div>
                 <div class="radar-controls">
                     <button id="radar-play-btn" title="Play/Pause">
                         <i class="fa-solid fa-play text-xs"></i>
                     </button>
                     <button id="radar-now-btn" class="radar-mini-btn" title="Jump to latest observed frame">Now</button>
+                    <button id="radar-zoom-in-btn" class="radar-mini-btn" title="Zoom in"><i class="fa-solid fa-plus text-[10px]"></i></button>
+                    <button id="radar-zoom-out-btn" class="radar-mini-btn" title="Zoom out"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                    <button id="radar-zoom-local-btn" class="radar-mini-btn" title="Zoom to local detail">Local</button>
                     <select id="radar-loop" class="radar-select" title="Loop mode">
                         <option value="all">All</option>
                         <option value="past">Past</option>
                         <option value="forecast">Forecast</option>
                     </select>
                     <select id="radar-speed" class="radar-select" title="Playback speed">
+                        <option value="1200">0.5x</option>
                         <option value="900">0.75x</option>
                         <option value="600" selected>1x</option>
                         <option value="400">1.5x</option>
                         <option value="250">2x</option>
+                        <option value="150">3x</option>
                     </select>
                     <input id="radar-slider" type="range" min="0" max="0" value="0">
                     <span id="radar-time-label">Loading...</span>
@@ -1495,6 +1500,14 @@
         let radarLoopMode = 'all';
         let radarSpeedMs = 600;
         let radarLocationMarker = null;
+        const RADAR_DEFAULT_ZOOM = 9;
+        const RADAR_LOCAL_ZOOM = 10;
+        const RADAR_TILE_MAX_ZOOM = 7;
+        const RADAR_TILE_SIZE = 512;
+        const RADAR_COLOR_SCHEME = 6;
+        const RADAR_ZOOM_OFFSET = -1;
+        let radarLastLat = null;
+        let radarLastLon = null;
         let alertPolygonLayer = null;
         let lightningLayerGroup = null;
         let lightningEnabled = false;
@@ -1652,21 +1665,54 @@
             });
         }
 
+        function buildRadarTileLayer(frame) {
+            return L.tileLayer(
+                `${frame.host}${frame.path}/${RADAR_TILE_SIZE}/{z}/{x}/{y}/${RADAR_COLOR_SCHEME}/1_1.png`,
+                {
+                    opacity: 0.82,
+                    zIndex: 10,
+                    tileSize: RADAR_TILE_SIZE,
+                    zoomOffset: RADAR_ZOOM_OFFSET,
+                    maxNativeZoom: RADAR_TILE_MAX_ZOOM - RADAR_ZOOM_OFFSET,
+                    maxZoom: 13,
+                    minZoom: 2,
+                    updateWhenZooming: true,
+                    keepBuffer: 2
+                }
+            );
+        }
+
+        function setRadarView(lat, lon, zoom = null) {
+            if (!radarMap) return;
+            const targetZoom = zoom ?? radarMap.getZoom() ?? RADAR_DEFAULT_ZOOM;
+            radarMap.setView([lat, lon], targetZoom, { animate: true });
+            setTimeout(() => radarMap.invalidateSize(), 120);
+        }
+
         function updateRadarMap(lat, lon) {
+            radarLastLat = lat;
+            radarLastLon = lon;
             if (!radarMap) {
                 radarMap = L.map('radar-map', {
                     center: [lat, lon],
-                    zoom: 7,
+                    zoom: RADAR_DEFAULT_ZOOM,
                     zoomControl: true,
-                    attributionControl: false
+                    attributionControl: false,
+                    minZoom: 4,
+                    maxZoom: 13
                 });
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                    maxZoom: 19
+                    maxZoom: 19,
+                    maxNativeZoom: 19
                 }).addTo(radarMap);
                 lightningLayerGroup = L.layerGroup().addTo(radarMap);
                 alertPolygonLayer = L.layerGroup().addTo(radarMap);
+                radarMap.on('zoomend', () => {
+                    const active = radarLayers[radarCurrentFrame];
+                    if (active && radarMap.hasLayer(active)) active.redraw();
+                });
             } else {
-                radarMap.setView([lat, lon], 7);
+                setRadarView(lat, lon);
             }
 
             if (radarLocationMarker) {
@@ -1690,8 +1736,8 @@
                 const res = await fetchWithTimeout('https://api.rainviewer.com/public/weather-maps.json', {}, 8000);
                 const data = await res.json();
                 const host = data.host;
-                const past = (data.radar.past || []).slice(-7); // last ~70 min
-                const nowcast = data.radar.nowcast || [];        // up to ~2h forecast
+                const past = data.radar.past || [];
+                const nowcast = data.radar.nowcast || [];
 
                 // Remove old layers
                 Object.values(radarLayers).forEach(l => { if (radarMap.hasLayer(l)) radarMap.removeLayer(l); });
@@ -1704,10 +1750,7 @@
                 ];
 
                 radarFrames.forEach((frame, i) => {
-                    radarLayers[i] = L.tileLayer(
-                        `${frame.host}${frame.path}/512/{z}/{x}/{y}/6/1_1.png`,
-                        { opacity: 0.65, zIndex: 10, tileSize: 512, zoomOffset: -1 }
-                    );
+                    radarLayers[i] = buildRadarTileLayer(frame);
                 });
 
                 const slider = document.getElementById('radar-slider');
@@ -1759,7 +1802,10 @@
 
         function showRadarFrame(index) {
             Object.values(radarLayers).forEach(l => { if (radarMap.hasLayer(l)) radarMap.removeLayer(l); });
-            if (radarLayers[index]) radarLayers[index].addTo(radarMap);
+            if (radarLayers[index]) {
+                radarLayers[index].addTo(radarMap);
+                radarLayers[index].redraw();
+            }
             radarCurrentFrame = index;
             document.getElementById('radar-slider').value = index;
             const frame = radarFrames[index];
@@ -2174,6 +2220,13 @@
             document.getElementById('location-btn').addEventListener('click', useCurrentLocation);
             document.getElementById('share-btn').addEventListener('click', shareApp);
             document.getElementById('radar-play-btn').addEventListener('click', toggleRadarPlay);
+            document.getElementById('radar-zoom-in-btn').addEventListener('click', () => radarMap?.zoomIn());
+            document.getElementById('radar-zoom-out-btn').addEventListener('click', () => radarMap?.zoomOut());
+            document.getElementById('radar-zoom-local-btn').addEventListener('click', () => {
+                if (radarLastLat !== null && radarLastLon !== null) {
+                    setRadarView(radarLastLat, radarLastLon, RADAR_LOCAL_ZOOM);
+                }
+            });
             document.getElementById('radar-lightning-btn').addEventListener('click', toggleLightningLayer);
             document.getElementById('radar-now-btn').addEventListener('click', moveToLatestObservedFrame);
             document.getElementById('radar-speed').addEventListener('change', function() {
