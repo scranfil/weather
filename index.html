@@ -751,9 +751,15 @@
 
         // ==================== END FAVORITES SYSTEM ====================
 
-        let currentLat = 39.8913;
-        let currentLon = -85.9677;
-        let currentLocationName = "Indianapolis, IN";
+        const FALLBACK_LOCATION = {
+            lat: 39.8913,
+            lon: -85.9677,
+            name: "Indianapolis, IN"
+        };
+
+        let currentLat = FALLBACK_LOCATION.lat;
+        let currentLon = FALLBACK_LOCATION.lon;
+        let currentLocationName = FALLBACK_LOCATION.name;
 
         // Tracks alert IDs already notified so we only fire once per new alert
         let seenAlertIds = new Set();
@@ -1536,31 +1542,53 @@
             }
         }
 
-        function useCurrentLocation() {
-            if (!navigator.geolocation) {
-                showToast('Geolocation is not supported by your browser.', 'warning');
-                return;
+        async function resolveLocationName(lat, lon) {
+            try {
+                const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {}, 8000);
+                const geoData = await res.json();
+                return geoData.address?.city || geoData.address?.town || "Current Location";
+            } catch (e) {
+                return "Current Location";
             }
-            
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                
-                currentLat = lat;
-                currentLon = lon;
-                
-                try {
-                    const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {}, 8000);
-                    const geoData = await res.json();
-                    currentLocationName = geoData.address?.city || geoData.address?.town || "Current Location";
-                } catch (e) {
-                    currentLocationName = "Current Location";
+        }
+
+        function useCurrentLocation(options = {}) {
+            const { silent = false } = options;
+
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    if (!silent) showToast('Geolocation is not supported by your browser.', 'warning');
+                    resolve(false);
+                    return;
                 }
-                
-                await fetchWeather(lat, lon, currentLocationName);
-            }, () => {
-                showToast('Unable to get your location.', 'error');
+
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+
+                    currentLat = lat;
+                    currentLon = lon;
+                    currentLocationName = await resolveLocationName(lat, lon);
+
+                    await fetchWeather(lat, lon, currentLocationName);
+                    resolve(true);
+                }, () => {
+                    if (!silent) showToast('Unable to get your location.', 'error');
+                    resolve(false);
+                }, { timeout: 10000, maximumAge: 300000 });
             });
+        }
+
+        async function loadDefaultWeather() {
+            document.getElementById('location-name').textContent = 'Getting your location...';
+
+            const located = await useCurrentLocation({ silent: true });
+            if (!located) {
+                currentLat = FALLBACK_LOCATION.lat;
+                currentLon = FALLBACK_LOCATION.lon;
+                currentLocationName = FALLBACK_LOCATION.name;
+                await fetchWeather(currentLat, currentLon, currentLocationName);
+            }
         }
 
         function initializeWeatherApp() {
@@ -1571,9 +1599,8 @@
             loadFavorites();
             renderFavorites();
             
-            // Load default weather
-            document.getElementById('location-name').textContent = currentLocationName;
-            fetchWeather(currentLat, currentLon, currentLocationName);
+            // Load weather for current location (falls back if unavailable)
+            loadDefaultWeather();
             
             // Button listeners
             document.getElementById('search-btn').addEventListener('click', searchLocation);
