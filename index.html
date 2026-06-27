@@ -41,10 +41,58 @@
 
         .weather-gradient {
             background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            transition: background 0.8s ease;
         }
 
         .stunning-bg {
             background: radial-gradient(circle at 30% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+            transition: background 0.8s ease;
+        }
+
+        .weather-bg-clear-day {
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #38bdf8 100%);
+        }
+        .weather-bg-clear-night {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #334155 100%);
+        }
+        .weather-bg-cloudy {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+        }
+        .weather-bg-rain {
+            background: linear-gradient(135deg, #0c4a6e 0%, #1e40af 40%, #475569 100%);
+        }
+        .weather-bg-storm {
+            background: linear-gradient(135deg, #1c1917 0%, #44403c 45%, #57534e 100%);
+        }
+        .weather-bg-snow {
+            background: linear-gradient(135deg, #334155 0%, #64748b 50%, #94a3b8 100%);
+        }
+
+        .rain-summary {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+        }
+        .rain-summary.rain-active {
+            background: rgba(59,130,246,0.22);
+            border-color: rgba(147,197,253,0.35);
+        }
+        .rain-summary.storm-active {
+            background: rgba(251,191,36,0.18);
+            border-color: rgba(251,191,36,0.35);
+        }
+
+        .insight-chip {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.14);
+        }
+
+        .lightning-marker {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fbbf24;
+            box-shadow: 0 0 8px #fbbf24, 0 0 16px #f59e0b;
+            border: 1px solid #fff;
         }
 
         .radar-container {
@@ -304,11 +352,18 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-28 sm:pt-20">
         <div class="flex items-center justify-between mb-2 px-1">
             <div class="text-xs font-semibold text-zinc-400 tracking-widest">FAVORITES</div>
-            <button onclick="addCurrentToFavorites()" 
-                    class="flex items-center gap-x-1.5 text-xs bg-white/10 hover:bg-white/20 transition-colors px-3 py-1 rounded-full text-blue-300">
-                <i class="fa-solid fa-plus text-[10px]"></i>
-                <span class="font-medium">Add Current</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="setHomeFromCurrent()" 
+                        class="flex items-center gap-x-1.5 text-xs bg-white/10 hover:bg-white/20 transition-colors px-3 py-1 rounded-full text-emerald-300">
+                    <i class="fa-solid fa-home text-[10px]"></i>
+                    <span class="font-medium">Set Home</span>
+                </button>
+                <button onclick="addCurrentToFavorites()" 
+                        class="flex items-center gap-x-1.5 text-xs bg-white/10 hover:bg-white/20 transition-colors px-3 py-1 rounded-full text-blue-300">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span class="font-medium">Add Current</span>
+                </button>
+            </div>
         </div>
         
         <div id="favorites-bar" 
@@ -338,7 +393,22 @@
                                 <span>Live</span>
                             </div>
                         </div>
-                        <div id="current-date" class="text-blue-200 text-sm font-medium mb-4"></div>
+                        <div id="current-date" class="text-blue-200 text-sm font-medium mb-3"></div>
+
+                        <div id="rain-summary" class="rain-summary hidden rounded-2xl px-4 py-2.5 text-sm text-blue-50 mb-3 flex items-center gap-x-2">
+                            <i id="rain-summary-icon" class="fa-solid fa-cloud-rain text-blue-200"></i>
+                            <span id="rain-summary-text"></span>
+                        </div>
+
+                        <div id="minute-precip" class="insight-chip hidden rounded-2xl px-4 py-2 text-sm text-blue-100 mb-3 flex items-center gap-x-2">
+                            <i class="fa-solid fa-stopwatch text-blue-200"></i>
+                            <span id="minute-precip-text"></span>
+                        </div>
+
+                        <div id="temp-compare" class="insight-chip hidden rounded-2xl px-4 py-2 text-sm text-blue-100 mb-3 flex items-center gap-x-2">
+                            <i id="temp-compare-icon" class="fa-solid fa-temperature-arrow-up text-emerald-300"></i>
+                            <span id="temp-compare-text"></span>
+                        </div>
 
                         <div class="flex items-baseline gap-x-2 mb-2">
                             <div id="current-temp" class="temp font-bold"></div>
@@ -400,32 +470,8 @@
             <div id="hourly-forecast" class="glass rounded-3xl p-4 flex gap-3 overflow-x-auto"></div>
         </div>
 
-        <div class="mb-8">
-            <div class="flex items-center justify-between mb-4 px-1">
-                <div class="section-title flex items-center gap-x-3">
-                    <i class="fa-solid fa-cloud-rain text-blue-300"></i>
-                    <span>Hourly Precipitation</span>
-                </div>
-                <div id="precip-max-label" class="text-xs text-zinc-400">Peak --%</div>
-            </div>
-            <div class="glass rounded-3xl border border-white/10 p-4 sm:p-5">
-                <div id="precip-graph" class="flex items-end gap-2 overflow-x-auto pb-1"></div>
-            </div>
-        </div>
-
-        <!-- 7-Day Forecast -->
-        <div class="mb-8">
-            <div class="flex items-center justify-between mb-4 px-1">
-                <div class="section-title flex items-center gap-x-3">
-                    <i class="fa-solid fa-calendar text-blue-400"></i>
-                    <span>7-Day Forecast</span>
-                </div>
-            </div>
-            <div id="daily-forecast" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4"></div>
-        </div>
-
         <!-- Live Radar -->
-        <div>
+        <div class="mb-8">
             <div class="flex items-center justify-between mb-4 px-1">
                 <div class="section-title flex items-center gap-x-3">
                     <i class="fa-solid fa-satellite text-blue-400"></i>
@@ -455,11 +501,41 @@
                     <input id="radar-slider" type="range" min="0" max="0" value="0">
                     <span id="radar-time-label">Loading...</span>
                 </div>
-                <div class="px-4 pb-3 bg-zinc-900/30 text-xs text-zinc-500 flex items-center justify-between">
-                    <div>RainViewer • <span class="radar-frame-past">&#9632; Past</span> &nbsp;<span class="radar-frame-forecast">&#9632; Forecast</span></div>
+                <div class="px-4 pb-3 bg-zinc-900/30 text-xs text-zinc-500 flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span>RainViewer • <span class="radar-frame-past">&#9632; Past</span> &nbsp;<span class="radar-frame-forecast">&#9632; Forecast</span></span>
+                        <button id="radar-lightning-btn" class="radar-mini-btn flex items-center gap-1" title="Toggle live lightning strikes">
+                            <i class="fa-solid fa-bolt text-amber-300"></i> Lightning
+                        </button>
+                        <span id="lightning-status" class="text-zinc-600"></span>
+                    </div>
                     <div id="radar-frame-count" class="text-zinc-600"></div>
                 </div>
             </div>
+        </div>
+
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <div class="section-title flex items-center gap-x-3">
+                    <i class="fa-solid fa-cloud-rain text-blue-300"></i>
+                    <span>Hourly Precipitation</span>
+                </div>
+                <div id="precip-max-label" class="text-xs text-zinc-400">Peak --%</div>
+            </div>
+            <div class="glass rounded-3xl border border-white/10 p-4 sm:p-5">
+                <div id="precip-graph" class="flex items-end gap-2 overflow-x-auto pb-1"></div>
+            </div>
+        </div>
+
+        <!-- 7-Day Forecast -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <div class="section-title flex items-center gap-x-3">
+                    <i class="fa-solid fa-calendar text-blue-400"></i>
+                    <span>7-Day Forecast</span>
+                </div>
+            </div>
+            <div id="daily-forecast" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4"></div>
         </div>
 
         <div class="mb-8 glass rounded-3xl border border-white/10 p-5 sm:p-6">
@@ -471,7 +547,7 @@
                 <div id="daylight-remaining" class="text-xs text-zinc-400">--</div>
             </div>
 
-            <div class="grid grid-cols-3 gap-3 text-center mb-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
                 <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
                     <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Sunrise</div>
                     <div id="sunrise-time" class="text-sm sm:text-base font-semibold mt-1">--:--</div>
@@ -483,6 +559,11 @@
                 <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
                     <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Daylight</div>
                     <div id="daylight-length" class="text-sm sm:text-base font-semibold mt-1">--</div>
+                </div>
+                <div class="bg-zinc-900/60 border border-white/10 rounded-2xl py-3">
+                    <div class="text-[11px] text-zinc-400 uppercase tracking-wide">Moon</div>
+                    <div id="moon-phase-name" class="text-sm sm:text-base font-semibold mt-1">--</div>
+                    <div id="moon-phase-detail" class="text-[11px] text-zinc-500 mt-0.5">--</div>
                 </div>
             </div>
 
@@ -749,6 +830,48 @@
             renderFavorites();
         }
 
+        function setHomeFromCurrent() {
+            if (!currentLocationName || currentLocationName === 'Getting your location...') {
+                showToast('Wait for your location to load first.', 'warning');
+                return;
+            }
+
+            let snapTemp = '--';
+            const ctEl = document.getElementById('current-temp');
+            if (ctEl?.textContent && Number.isFinite(parseInt(ctEl.textContent, 10))) {
+                snapTemp = parseInt(ctEl.textContent, 10);
+            }
+
+            const entry = {
+                name: currentLocationName,
+                lat: currentLat,
+                lon: currentLon,
+                isHome: true,
+                temp: snapTemp
+            };
+
+            const homeIndex = favorites.findIndex(f => f.isHome);
+            if (homeIndex >= 0) {
+                favorites[homeIndex] = entry;
+            } else {
+                favorites.unshift(entry);
+            }
+
+            saveFavorites();
+            renderFavorites();
+            refreshFavoritesTemps().catch(() => {});
+            showToast('Home location updated', 'success', 1500);
+        }
+
+        function maybePromptSetHome() {
+            if (localStorage.getItem('homePromptDismissed')) return;
+            const onlyDefaultHome = favorites.length === 1 && favorites[0].isHome
+                && Math.abs(favorites[0].lat - FALLBACK_LOCATION.lat) < 0.01;
+            if (!onlyDefaultHome) return;
+            showToast('Tip: tap Set Home to save your current location.', 'info', 3200);
+            localStorage.setItem('homePromptDismissed', '1');
+        }
+
         // ==================== END FAVORITES SYSTEM ====================
 
         const FALLBACK_LOCATION = {
@@ -760,6 +883,9 @@
         let currentLat = FALLBACK_LOCATION.lat;
         let currentLon = FALLBACK_LOCATION.lon;
         let currentLocationName = FALLBACK_LOCATION.name;
+        let lastSunrise = null;
+        let lastSunset = null;
+        let isRefreshingWeather = false;
 
         // Tracks alert IDs already notified so we only fire once per new alert
         let seenAlertIds = new Set();
@@ -821,6 +947,200 @@
             return Math.round((celsius * 9/5) + 32);
         }
 
+        function getTodayLowTemp(periods) {
+            const todayKey = new Date().toDateString();
+            const todayPeriods = periods.filter(p => new Date(p.startTime).toDateString() === todayKey);
+            const nightPeriod = todayPeriods.find(p => !p.isDaytime);
+            if (nightPeriod && Number.isFinite(nightPeriod.temperature)) return nightPeriod.temperature;
+            const temps = todayPeriods.map(p => p.temperature).filter(t => Number.isFinite(t));
+            return temps.length ? Math.min(...temps) : null;
+        }
+
+        function getMoonPhaseInfo(date = new Date()) {
+            const synodic = 29.53058867;
+            const ref = new Date('2000-01-06T18:14:00Z');
+            const days = (date - ref) / 86400000;
+            const phase = ((days % synodic) + synodic) % synodic;
+            const illumination = Math.round((1 - Math.cos((2 * Math.PI * phase) / synodic)) * 50);
+            const names = [
+                'New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous',
+                'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'
+            ];
+            const index = Math.floor(((phase / synodic) + 0.0625) * 8) % 8;
+            return { name: names[index], illumination, phase };
+        }
+
+        function updateMoonPhase(date = new Date()) {
+            const info = getMoonPhaseInfo(date);
+            document.getElementById('moon-phase-name').textContent = info.name;
+            document.getElementById('moon-phase-detail').textContent = `${info.illumination}% lit`;
+        }
+
+        function applyWeatherBackground(condition, isDay = true) {
+            const card = document.getElementById('current-weather');
+            const classes = ['weather-bg-clear-day', 'weather-bg-clear-night', 'weather-bg-cloudy', 'weather-bg-rain', 'weather-bg-storm', 'weather-bg-snow'];
+            card.classList.remove(...classes);
+            const text = (condition || '').toLowerCase();
+            let theme = isDay ? 'weather-bg-clear-day' : 'weather-bg-clear-night';
+            if (text.includes('thunder') || text.includes('storm')) theme = 'weather-bg-storm';
+            else if (text.includes('snow') || text.includes('sleet') || text.includes('ice') || text.includes('blizzard')) theme = 'weather-bg-snow';
+            else if (text.includes('rain') || text.includes('shower') || text.includes('drizzle')) theme = 'weather-bg-rain';
+            else if (text.includes('cloud') || text.includes('overcast') || text.includes('fog') || text.includes('mist')) theme = 'weather-bg-cloudy';
+            else if (!isDay) theme = 'weather-bg-clear-night';
+            card.classList.add(theme);
+        }
+
+        function isCurrentlyDaytime() {
+            const now = Date.now();
+            if (lastSunrise && lastSunset) {
+                return now >= lastSunrise.getTime() && now <= lastSunset.getTime();
+            }
+            const hour = new Date().getHours();
+            return hour >= 6 && hour < 20;
+        }
+
+        function updateRainSummary(hourlyPeriods) {
+            const section = document.getElementById('rain-summary');
+            const textEl = document.getElementById('rain-summary-text');
+            const iconEl = document.getElementById('rain-summary-icon');
+            const periods = hourlyPeriods.slice(0, 12);
+
+            const rainy = periods
+                .map(p => ({
+                    time: new Date(p.startTime),
+                    chance: p.probabilityOfPrecipitation?.value || 0,
+                    forecast: (p.shortForecast || '').toLowerCase()
+                }))
+                .filter(p => p.chance >= 35 || p.forecast.includes('rain') || p.forecast.includes('shower') || p.forecast.includes('storm') || p.forecast.includes('thunder'));
+
+            section.classList.remove('rain-active', 'storm-active');
+            if (!rainy.length) {
+                section.classList.remove('hidden');
+                iconEl.className = 'fa-solid fa-sun text-amber-200';
+                textEl.textContent = 'No significant rain expected in the next 12 hours.';
+                return;
+            }
+
+            const first = rainy[0];
+            const timeLabel = first.time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const isStorm = first.forecast.includes('thunder') || first.forecast.includes('storm');
+            section.classList.remove('hidden');
+            section.classList.add(isStorm ? 'storm-active' : 'rain-active');
+            iconEl.className = isStorm ? 'fa-solid fa-cloud-bolt text-amber-200' : 'fa-solid fa-cloud-rain text-blue-200';
+
+            if (first.time.getTime() <= Date.now() + 15 * 60000) {
+                textEl.textContent = isStorm
+                    ? `Storms possible now (${first.chance}% chance).`
+                    : `Rain likely now (${first.chance}% chance).`;
+            } else {
+                textEl.textContent = isStorm
+                    ? `Storms possible around ${timeLabel} (${first.chance}% chance).`
+                    : `Rain likely around ${timeLabel} (${first.chance}% chance).`;
+            }
+        }
+
+        function updateMinutePrecipSummary(minutelyData) {
+            const section = document.getElementById('minute-precip');
+            const textEl = document.getElementById('minute-precip-text');
+            if (!minutelyData?.time?.length) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            const now = Date.now();
+            let rainingNow = false;
+            let nextRainMinutes = null;
+
+            for (let i = 0; i < minutelyData.time.length; i++) {
+                const slotTime = new Date(minutelyData.time[i]).getTime();
+                const precip = minutelyData.precipitation?.[i] || 0;
+                const chance = minutelyData.precipitation_probability?.[i] || 0;
+                const minutesAway = Math.round((slotTime - now) / 60000);
+                const hasRain = precip >= 0.1 || chance >= 55;
+
+                if (minutesAway <= 0 && hasRain) rainingNow = true;
+                if (nextRainMinutes === null && minutesAway >= 0 && hasRain) {
+                    nextRainMinutes = Math.max(0, minutesAway);
+                }
+            }
+
+            section.classList.remove('hidden');
+            if (rainingNow) {
+                textEl.textContent = 'Precipitation detected now — rain may be starting.';
+            } else if (nextRainMinutes !== null && nextRainMinutes <= 120) {
+                const label = nextRainMinutes <= 15 ? `about ${nextRainMinutes} min` : `around ${nextRainMinutes} min`;
+                textEl.textContent = `Rain may start in ${label}.`;
+            } else {
+                textEl.textContent = 'Dry for at least the next 2 hours.';
+            }
+        }
+
+        function updateTempComparison(currentTempF, hourlyTemps, hourlyTimes) {
+            const section = document.getElementById('temp-compare');
+            const textEl = document.getElementById('temp-compare-text');
+            const iconEl = document.getElementById('temp-compare-icon');
+            if (!Number.isFinite(currentTempF) || !hourlyTemps?.length || !hourlyTimes?.length) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const targetHour = now.getHours();
+
+            let yesterdayTemp = null;
+            for (let i = 0; i < hourlyTimes.length; i++) {
+                const t = new Date(hourlyTimes[i]);
+                if (t.getDate() === yesterday.getDate() && t.getMonth() === yesterday.getMonth() && t.getFullYear() === yesterday.getFullYear() && t.getHours() === targetHour) {
+                    yesterdayTemp = hourlyTemps[i];
+                    break;
+                }
+            }
+            if (!Number.isFinite(yesterdayTemp)) {
+                let bestDiff = Infinity;
+                for (let i = 0; i < hourlyTimes.length; i++) {
+                    const t = new Date(hourlyTimes[i]);
+                    if (t.getDate() === yesterday.getDate() && t.getMonth() === yesterday.getMonth() && t.getFullYear() === yesterday.getFullYear()) {
+                        const diff = Math.abs(t.getHours() - targetHour);
+                        if (diff < bestDiff) {
+                            bestDiff = diff;
+                            yesterdayTemp = hourlyTemps[i];
+                        }
+                    }
+                }
+            }
+
+            if (!Number.isFinite(yesterdayTemp)) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            const diff = Math.round(currentTempF - yesterdayTemp);
+            section.classList.remove('hidden');
+            if (diff === 0) {
+                iconEl.className = 'fa-solid fa-equals text-blue-200';
+                textEl.textContent = 'Same temperature as yesterday at this time.';
+            } else if (diff > 0) {
+                iconEl.className = 'fa-solid fa-temperature-arrow-up text-emerald-300';
+                textEl.textContent = `${diff}° warmer than yesterday at this time.`;
+            } else {
+                iconEl.className = 'fa-solid fa-temperature-arrow-down text-sky-300';
+                textEl.textContent = `${Math.abs(diff)}° cooler than yesterday at this time.`;
+            }
+        }
+
+        async function fetchOpenMeteoExtras(lat, lon) {
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&minutely_15=precipitation,precipitation_probability&hourly=temperature_2m&past_days=1&forecast_minutely_15=16&forecast_days=1&temperature_unit=fahrenheit&timezone=auto`;
+                const res = await fetchWithTimeout(url, {}, 8000);
+                if (!res.ok) return null;
+                return await res.json();
+            } catch (e) {
+                return null;
+            }
+        }
+
         async function fetchWithTimeout(resource, options = {}, timeout = 10000) {
                 const controller = new AbortController();
                 const id = setTimeout(() => controller.abort(), timeout);
@@ -834,13 +1154,25 @@
                 }
             }
 
-            async function fetchWeather(lat, lon, locationName = null) {
+            async function fetchWeather(lat, lon, locationName = null, options = {}) {
+            const { silent = false } = options;
+            if (isRefreshingWeather) return;
+            isRefreshingWeather = true;
             try {
-                document.getElementById('current-weather').style.opacity = '0.6';
+                if (!silent) document.getElementById('current-weather').style.opacity = '0.6';
                 
                 const pointsResponse = await fetchWithTimeout(`https://api.weather.gov/points/${lat},${lon}`, {}, 10000);
                 if (!pointsResponse.ok) throw new Error('Failed to get location data');
                 const pointsData = await pointsResponse.json();
+
+                const nwsPlace = pointsData.properties?.relativeLocation?.properties;
+                if (nwsPlace?.city) {
+                    const nwsName = nwsPlace.state ? `${nwsPlace.city}, ${nwsPlace.state}` : nwsPlace.city;
+                    if (!locationName || locationName === 'Getting your location...') {
+                        locationName = nwsName;
+                        currentLocationName = nwsName;
+                    }
+                }
                 
                 const forecastUrl = pointsData.properties.forecast;
                 const forecastHourlyUrl = pointsData.properties.forecastHourly;
@@ -850,40 +1182,58 @@
                 const stationsData = await stationsResponse.json();
                 const firstStation = stationsData.features[0].id.split('/').pop();
                 
-                const observationResponse = await fetchWithTimeout(`https://api.weather.gov/stations/${firstStation}/observations/latest`, {}, 10000);
-                const observationData = await observationResponse.json();
-                
-                const [forecastRes, hourlyRes] = await Promise.all([
+                const [observationResponse, forecastRes, hourlyRes, openMeteoData] = await Promise.all([
+                    fetchWithTimeout(`https://api.weather.gov/stations/${firstStation}/observations/latest`, {}, 10000),
                     fetchWithTimeout(forecastUrl, {}, 10000),
-                    fetchWithTimeout(forecastHourlyUrl, {}, 10000)
+                    fetchWithTimeout(forecastHourlyUrl, {}, 10000),
+                    fetchOpenMeteoExtras(lat, lon)
                 ]);
                 
+                const observationData = await observationResponse.json();
                 const forecastData = await forecastRes.json();
                 const hourlyData = await hourlyRes.json();
                 
                 const periods = forecastData.properties.periods;
+                const hourlyPeriods = hourlyData.properties.periods;
                 
-                updateCurrentWeather(observationData.properties, periods[0], locationName || currentLocationName);
-                updateHourlyForecast(hourlyData.properties.periods);
-                updatePrecipGraph(hourlyData.properties.periods);
+                updateCurrentWeather(observationData.properties, periods[0], locationName || currentLocationName, periods);
+                updateHourlyForecast(hourlyPeriods);
+                updatePrecipGraph(hourlyPeriods);
+                updateRainSummary(hourlyPeriods);
                 updateDailyForecast(periods);
                 updateRadarMap(lat, lon);
+
+                if (openMeteoData?.minutely_15) {
+                    updateMinutePrecipSummary(openMeteoData.minutely_15);
+                } else {
+                    document.getElementById('minute-precip').classList.add('hidden');
+                }
+
+                const currentTempEl = document.getElementById('current-temp').textContent;
+                const currentTempF = parseInt(currentTempEl, 10);
+                if (openMeteoData?.hourly) {
+                    updateTempComparison(currentTempF, openMeteoData.hourly.temperature_2m, openMeteoData.hourly.time);
+                } else {
+                    document.getElementById('temp-compare').classList.add('hidden');
+                }
+
+                updateMoonPhase();
                 fetchAndUpdateAlerts(lat, lon);
                 fetchAndUpdateSunData(lat, lon);
                 
                 document.getElementById('current-weather').style.opacity = '1';
-                
-                // Update temperature in favorites bar
-                                refreshFavoritesTemps();
+                refreshFavoritesTemps();
                 
             } catch (error) {
                 console.error("Weather loading error:", error);
                 document.getElementById('current-weather').style.opacity = '1';
-                showToast("Weather data couldn't be loaded. Please try again.", 'error');
+                if (!silent) showToast("Weather data couldn't be loaded. Please try again.", 'error');
+            } finally {
+                isRefreshingWeather = false;
             }
         }
 
-        function updateCurrentWeather(observation, forecastPeriod, locationName) {
+        function updateCurrentWeather(observation, forecastPeriod, locationName, allPeriods = []) {
             document.getElementById('location-name').textContent = locationName;
             document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', month: 'long', day: 'numeric' 
@@ -894,7 +1244,6 @@
             if (Number.isFinite(currentTempC)) {
                 currentTempF = cToF(currentTempC);
             } else {
-                // observation missing — fall back to forecast temperature (forecast is in °F)
                 console.warn('Observation temperature missing or invalid, falling back to forecast temperature');
                 currentTempF = forecastPeriod.temperature || '--';
             }
@@ -916,8 +1265,11 @@
             
             document.getElementById('weather-summary').textContent = summary;
             
+            const todayLow = getTodayLowTemp(allPeriods);
             document.getElementById('high-temp').textContent = forecastPeriod.temperature + '°';
-            document.getElementById('low-temp').textContent = (forecastPeriod.temperature - 8) + '°';
+            document.getElementById('low-temp').textContent = (todayLow !== null ? todayLow : forecastPeriod.temperature) + '°';
+
+            applyWeatherBackground(currentCondition, isCurrentlyDaytime());
             
             const feelsLikeC = observation.heatIndex?.value;
             if (Number.isFinite(feelsLikeC)) {
@@ -1139,6 +1491,162 @@
         let radarLoopMode = 'all';
         let radarSpeedMs = 600;
         let radarLocationMarker = null;
+        let alertPolygonLayer = null;
+        let lightningLayerGroup = null;
+        let lightningEnabled = false;
+        let lightningSocket = null;
+        let lightningStrikes = [];
+        const LIGHTNING_MAX_AGE_MS = 45 * 60 * 1000;
+        const BLITZORTUNG_SERVERS = ['wss://ws1.blitzortung.org', 'wss://ws2.blitzortung.org', 'wss://ws3.blitzortung.org'];
+        let lightningServerIndex = 0;
+
+        function decodeBlitzortungMessage(data) {
+            const e = {};
+            const d = [...data];
+            let c = d[0];
+            let f = c;
+            const g = [c];
+            let h = 256;
+            let o = h;
+            for (let i = 1; i < d.length; i++) {
+                let a = d.charCodeAt(i);
+                a = (h > a) ? d[i] : (e[a] ?? (f + c));
+                g.push(a);
+                c = a[0];
+                e[o] = f + c;
+                o++;
+                f = a;
+            }
+            return g.join('');
+        }
+
+        function parseLightningStrike(raw) {
+            try {
+                const decoded = decodeBlitzortungMessage(raw);
+                const payload = JSON.parse(decoded);
+                if (Array.isArray(payload)) {
+                    const [, lat, lon] = payload;
+                    if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon, time: Date.now() };
+                }
+                if (payload && Number.isFinite(payload.lat) && Number.isFinite(payload.lon)) {
+                    return { lat: payload.lat, lon: payload.lon, time: Date.now() };
+                }
+            } catch (e) {
+                return null;
+            }
+            return null;
+        }
+
+        function isStrikeNearMap(strike, lat, lon) {
+            const dLat = strike.lat - lat;
+            const dLon = strike.lon - lon;
+            return Math.sqrt(dLat * dLat + dLon * dLon) < 6;
+        }
+
+        function pruneLightningStrikes() {
+            const cutoff = Date.now() - LIGHTNING_MAX_AGE_MS;
+            lightningStrikes = lightningStrikes.filter(s => s.time >= cutoff);
+        }
+
+        function renderLightningStrikes() {
+            if (!radarMap || !lightningLayerGroup || !lightningEnabled) return;
+            lightningLayerGroup.clearLayers();
+            pruneLightningStrikes();
+            lightningStrikes.forEach(strike => {
+                const age = Date.now() - strike.time;
+                const opacity = Math.max(0.25, 1 - (age / LIGHTNING_MAX_AGE_MS));
+                L.circleMarker([strike.lat, strike.lon], {
+                    radius: 4,
+                    fillColor: '#fbbf24',
+                    color: '#ffffff',
+                    weight: 1,
+                    opacity,
+                    fillOpacity: opacity
+                }).addTo(lightningLayerGroup);
+            });
+            const status = document.getElementById('lightning-status');
+            if (status) status.textContent = lightningStrikes.length ? `${lightningStrikes.length} strikes` : 'Listening…';
+        }
+
+        function connectLightningFeed() {
+            if (!lightningEnabled || lightningSocket) return;
+            const url = BLITZORTUNG_SERVERS[lightningServerIndex % BLITZORTUNG_SERVERS.length];
+            try {
+                lightningSocket = new WebSocket(url);
+            } catch (e) {
+                return;
+            }
+
+            lightningSocket.onopen = () => {
+                lightningSocket.send(JSON.stringify({ a: 111 }));
+                const status = document.getElementById('lightning-status');
+                if (status) status.textContent = 'Connected';
+            };
+
+            lightningSocket.onmessage = (event) => {
+                const strike = parseLightningStrike(event.data);
+                if (!strike || !isStrikeNearMap(strike, currentLat, currentLon)) return;
+                lightningStrikes.push(strike);
+                renderLightningStrikes();
+            };
+
+            lightningSocket.onclose = () => {
+                lightningSocket = null;
+                if (!lightningEnabled) return;
+                lightningServerIndex++;
+                setTimeout(connectLightningFeed, 2500);
+            };
+
+            lightningSocket.onerror = () => {
+                if (lightningSocket) lightningSocket.close();
+            };
+        }
+
+        function disconnectLightningFeed() {
+            if (lightningSocket) {
+                lightningSocket.close();
+                lightningSocket = null;
+            }
+            if (lightningLayerGroup) lightningLayerGroup.clearLayers();
+            const status = document.getElementById('lightning-status');
+            if (status) status.textContent = '';
+        }
+
+        function toggleLightningLayer() {
+            lightningEnabled = !lightningEnabled;
+            const btn = document.getElementById('radar-lightning-btn');
+            if (btn) btn.classList.toggle('bg-amber-500/20', lightningEnabled);
+            if (lightningEnabled) {
+                connectLightningFeed();
+                renderLightningStrikes();
+            } else {
+                disconnectLightningFeed();
+            }
+        }
+
+        function updateAlertPolygons(features) {
+            if (!radarMap) return;
+            if (!alertPolygonLayer) {
+                alertPolygonLayer = L.layerGroup().addTo(radarMap);
+            }
+            alertPolygonLayer.clearLayers();
+
+            features.forEach(feature => {
+                if (!feature.geometry) return;
+                const props = feature.properties || {};
+                const severity = (props.severity || '').toLowerCase();
+                const color = severity.includes('extreme') || severity.includes('severe') ? '#ef4444'
+                    : severity.includes('moderate') ? '#f59e0b' : '#60a5fa';
+                L.geoJSON(feature, {
+                    style: {
+                        color,
+                        weight: 2,
+                        fillColor: color,
+                        fillOpacity: 0.18
+                    }
+                }).bindTooltip(props.event || 'Weather Alert', { sticky: true }).addTo(alertPolygonLayer);
+            });
+        }
 
         function updateRadarMap(lat, lon) {
             if (!radarMap) {
@@ -1151,6 +1659,8 @@
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                     maxZoom: 19
                 }).addTo(radarMap);
+                lightningLayerGroup = L.layerGroup().addTo(radarMap);
+                alertPolygonLayer = L.layerGroup().addTo(radarMap);
             } else {
                 radarMap.setView([lat, lon], 7);
             }
@@ -1334,8 +1844,10 @@
                 });
 
                 updateAlerts(features);
+                updateAlertPolygons(features);
             } catch (error) {
                 updateAlerts([]);
+                updateAlertPolygons([]);
             }
         }
 
@@ -1481,6 +1993,9 @@
             const remainingEl = document.getElementById('daylight-remaining');
             const progressEl = document.getElementById('daylight-progress');
 
+            lastSunrise = sunrise;
+            lastSunset = sunset;
+
             if (!sunrise || !sunset || Number.isNaN(sunrise.getTime()) || Number.isNaN(sunset.getTime())) {
                 sunriseEl.textContent = '--:--';
                 sunsetEl.textContent = '--:--';
@@ -1510,6 +2025,9 @@
             } else {
                 remainingEl.textContent = 'Daylight ended';
             }
+
+            const condition = document.getElementById('current-condition')?.textContent;
+            if (condition) applyWeatherBackground(condition, isCurrentlyDaytime());
         }
 
         // Update temperatures in favorites bar after loading weather
@@ -1542,14 +2060,57 @@
             }
         }
 
+        function extractPlaceName(address, fallbackName = null) {
+            if (!address) return fallbackName;
+            return address.city || address.town || address.village || address.hamlet
+                || address.municipality || address.borough || address.suburb
+                || address.neighbourhood || address.county || fallbackName;
+        }
+
+        function formatPlaceWithState(place, address) {
+            if (!place) return null;
+            const stateCode = address?.['ISO3166-2-lvl4']?.split('-')[1]
+                || (address?.state?.length === 2 ? address.state : null);
+            if (stateCode) return `${place}, ${stateCode}`;
+            if (address?.state) return `${place}, ${address.state}`;
+            return place;
+        }
+
+        async function resolveLocationNameFromNws(lat, lon) {
+            try {
+                const res = await fetchWithTimeout(`https://api.weather.gov/points/${lat},${lon}`, {}, 8000);
+                if (!res.ok) return null;
+                const data = await res.json();
+                const { city, state } = data.properties?.relativeLocation?.properties || {};
+                if (city && state) return `${city}, ${state}`;
+                if (city) return city;
+                return null;
+            } catch (e) {
+                return null;
+            }
+        }
+
         async function resolveLocationName(lat, lon) {
             try {
-                const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {}, 8000);
-                const geoData = await res.json();
-                return geoData.address?.city || geoData.address?.town || "Current Location";
+                const res = await fetchWithTimeout(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lon}`,
+                    {},
+                    8000
+                );
+                if (res.ok) {
+                    const geoData = await res.json();
+                    const place = extractPlaceName(geoData.address, geoData.name);
+                    const formatted = formatPlaceWithState(place, geoData.address);
+                    if (formatted) return formatted;
+                    if (geoData.display_name) {
+                        return geoData.display_name.split(',')[0].trim();
+                    }
+                }
             } catch (e) {
-                return "Current Location";
+                // fall through to NWS
             }
+
+            return await resolveLocationNameFromNws(lat, lon);
         }
 
         function useCurrentLocation(options = {}) {
@@ -1588,6 +2149,8 @@
                 currentLon = FALLBACK_LOCATION.lon;
                 currentLocationName = FALLBACK_LOCATION.name;
                 await fetchWeather(currentLat, currentLon, currentLocationName);
+            } else {
+                maybePromptSetHome();
             }
         }
 
@@ -1606,6 +2169,7 @@
             document.getElementById('search-btn').addEventListener('click', searchLocation);
             document.getElementById('location-btn').addEventListener('click', useCurrentLocation);
             document.getElementById('radar-play-btn').addEventListener('click', toggleRadarPlay);
+            document.getElementById('radar-lightning-btn').addEventListener('click', toggleLightningLayer);
             document.getElementById('radar-now-btn').addEventListener('click', moveToLatestObservedFrame);
             document.getElementById('radar-speed').addEventListener('change', function() {
                 radarSpeedMs = parseInt(this.value, 10);
@@ -1735,15 +2299,21 @@
 
         window.onload = initializeWeatherApp;
 
-        // Auto-refresh the entire page every 10 minutes
         const AUTO_REFRESH_MS = 10 * 60 * 1000;
-        setInterval(() => {
+        setInterval(async () => {
             const indicator = document.getElementById('refresh-indicator');
             if (indicator) indicator.classList.remove('hidden');
-            window.location.reload();
+            await fetchWeather(currentLat, currentLon, currentLocationName, { silent: true });
+            if (radarFrames.length) loadRadarFrames();
+            if (indicator) {
+                setTimeout(() => indicator.classList.add('hidden'), 1500);
+            }
         }, AUTO_REFRESH_MS);
 
-        // Track last updated time
+        setInterval(() => {
+            if (lightningEnabled) renderLightningStrikes();
+        }, 60000);
+
         const _origFetchWeather = fetchWeather;
         fetchWeather = async function(...args) {
             await _origFetchWeather(...args);
