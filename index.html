@@ -1273,16 +1273,34 @@
             }
         }
 
-        function fireAlertNotification(event, headline) {
+        async function fireAlertNotification(event, headline) {
             if (!notificationsReady) return;
-            const n = new Notification(`⚠️ ${event}`, {
+
+            const title = `⚠️ ${event}`;
+            const options = {
                 body: headline,
                 icon: 'icon.svg',
                 badge: 'icon.svg',
                 tag: event,
                 renotify: true
-            });
-            n.onclick = () => { window.focus(); n.close(); };
+            };
+
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.ready;
+                    if (registration?.showNotification) {
+                        await registration.showNotification(title, options);
+                        return;
+                    }
+                }
+            } catch (e) {
+                // Fall back to the legacy constructor if the service worker path is unavailable.
+            }
+
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                const n = new Notification(title, options);
+                n.onclick = () => { window.focus(); n.close(); };
+            }
         }
 
         function isDaytimeAt(date = new Date()) {
