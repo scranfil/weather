@@ -1265,6 +1265,9 @@
         // Tracks alert IDs already notified so we only fire once per new alert
         let seenAlertIds = new Set();
         let notificationsReady = false;
+        let currentAlerts = [];
+        let dismissedAlertIds = new Set();
+        const DISMISSED_ALERTS_KEY = 'dismissedWeatherAlerts';
 
         async function requestNotificationPermission() {
             if (!('Notification' in window)) return;
@@ -1881,19 +1884,58 @@
             return isDaytimeAt(new Date());
         }
 
+        function loadDismissedAlertIds() {
+            try {
+                const saved = localStorage.getItem(DISMISSED_ALERTS_KEY);
+                if (!saved) return;
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    dismissedAlertIds = new Set(parsed.filter(Boolean));
+                }
+            } catch (e) {
+                dismissedAlertIds = new Set();
+            }
+        }
+
+        function persistDismissedAlertIds() {
+            try {
+                localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify([...dismissedAlertIds]));
+            } catch (e) {
+                // ignore persistence failures
+            }
+        }
+
+        function isAlertDismissed(feature) {
+            const id = feature?.id || feature?.properties?.id || feature?.properties?.event;
+            return Boolean(id && dismissedAlertIds.has(id));
+        }
+
+        function dismissAlert(feature) {
+            const id = feature?.id || feature?.properties?.id || feature?.properties?.event;
+            if (!id) return;
+            dismissedAlertIds.add(id);
+            persistDismissedAlertIds();
+            currentAlerts = currentAlerts.filter(alert => {
+                const alertId = alert?.id || alert?.properties?.id || alert?.properties?.event;
+                return alertId !== id;
+            });
+            updateMainAlertStrip(currentAlerts);
+            updateAlerts(currentAlerts);
+        }
+
         function updateMainAlertStrip(alerts) {
             const strip = document.getElementById('main-alert-strip');
             const text = document.getElementById('main-alert-strip-text');
             if (!strip || !text) return;
-            const severe = (alerts || []).filter(a => {
-                const e = (a.properties?.event || '').toLowerCase();
-                return e.includes('warning') || e.includes('tornado') || e.includes('severe');
+            const visible = (alerts || []).filter(alert => {
+                const e = (alert.properties?.event || '').toLowerCase();
+                return !isAlertDismissed(alert) && (e.includes('warning') || e.includes('tornado') || e.includes('severe'));
             });
-            if (!severe.length) {
+            if (!visible.length) {
                 strip.classList.add('hidden');
                 return;
             }
-            const top = severe[0].properties;
+            const top = visible[0].properties;
             text.textContent = `${top.event || 'Alert'}: ${top.headline || top.description || 'Check details below.'}`;
             strip.classList.remove('hidden');
         }
@@ -3015,9 +3057,11 @@
 
         function processAlerts(features, requestId = null) {
             if (requestId !== null && requestId !== weatherRequestId) return;
-            updateMainAlertStrip(features);
+            const visibleFeatures = (features || []).filter(feature => !isAlertDismissed(feature));
+            currentAlerts = visibleFeatures;
+            updateMainAlertStrip(visibleFeatures);
 
-            features.forEach(f => {
+            visibleFeatures.forEach(f => {
                 const id = f.id || f.properties?.id || f.properties?.event;
                 if (id && !seenAlertIds.has(id)) {
                     seenAlertIds.add(id);
@@ -3028,10 +3072,10 @@
                 }
             });
 
-            updateAlerts(features);
-            updateAlertPolygons(features);
+            updateAlerts(visibleFeatures);
+            updateAlertPolygons(visibleFeatures);
             if (mainCardContext) {
-                mainCardContext.options.alerts = features;
+                mainCardContext.options.alerts = visibleFeatures;
                 refreshMainCardCondition();
             }
         }
@@ -3041,18 +3085,23 @@
             processAlerts(features, requestId);
         }
 
+        function initializeAlertDismissals() {
+            loadDismissedAlertIds();
+        }
+
         function updateAlerts(features) {
             const section = document.getElementById('alerts-section');
             const list = document.getElementById('alerts-list');
             list.innerHTML = '';
 
-            if (!features.length) {
+            const visibleFeatures = (features || []).filter(feature => !isAlertDismissed(feature));
+            if (!visibleFeatures.length) {
                 section.classList.add('hidden');
                 return;
             }
 
             section.classList.remove('hidden');
-            features.slice(0, 3).forEach((feature, idx) => {
+            visibleFeatures.slice(0, 3).forEach((feature, idx) => {
                 const props = feature.properties || {};
                 const severity = (props.severity || 'Unknown').toLowerCase();
                 const event = props.event || 'Weather Alert';
@@ -3087,9 +3136,18 @@
                 const sevEl = document.createElement('div');
                 sevEl.className = 'text-[11px] uppercase tracking-wide text-zinc-300';
                 sevEl.textContent = severity;
+                const dismissBtn = document.createElement('button');
+                dismissBtn.className = 'text-zinc-400 hover:text-white transition-colors';
+                dismissBtn.setAttribute('aria-label', `Dismiss ${event}`);
+                dismissBtn.innerHTML = '<i class="fa-solid fa-xmark text-xs"></i>';
+                dismissBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    dismissAlert(feature);
+                });
                 const chevron = document.createElement('i');
                 chevron.className = 'fa-solid fa-chevron-down text-zinc-400 text-xs transition-transform duration-300 alert-chevron';
                 rightHeader.appendChild(sevEl);
+                rightHeader.appendChild(dismissBtn);
                 rightHeader.appendChild(chevron);
                 header.appendChild(eventEl);
                 header.appendChild(rightHeader);
@@ -3664,6 +3722,8 @@
                 });
             });
         }
+
+        initializeAlertDismissals();
     </script>
 </body>
 </html>
