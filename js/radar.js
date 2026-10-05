@@ -4,6 +4,7 @@ import {
   LIGHTNING_MAX_AGE_MS,
   RADAR_COLOR_SCHEME,
   RADAR_DEFAULT_ZOOM,
+  RADAR_TILE_OPTIONS,
   RADAR_LOCAL_ZOOM,
   RADAR_TILE_MAX_ZOOM,
   RADAR_TILE_SIZE,
@@ -53,6 +54,16 @@ function latLonToPixelInTile(lat, lon, zoom, tileX, tileY, tileSize = 512) {
   };
 }
 
+function isDisplayedPrecip(r, g, b, a) {
+  if (a < 40) return false;
+  if (b > r + 12 && b > 60) return true;
+  if (g > r + 20 && g > b && g > 70) return true;
+  if (r > 160 && g > 70 && b < 110 && r > b + 40) return true;
+  if (r > 160 && g < 110 && b < 110) return true;
+  if (r > 90 && b > 90 && g < 110 && b > g + 20) return true;
+  return false;
+}
+
 function interpretRadarPixel(r, g, b, a) {
   if (a < 120) return null;
   if (r > 140 && b > 120 && g < 100) return { text: 'Thunderstorms', severity: 85 };
@@ -68,7 +79,7 @@ export function sampleRadarPrecipAt(lat, lon) {
   const z = RADAR_TILE_MAX_ZOOM;
   const { x, y } = latLonToTileXY(lat, lon, z);
   const { px, py } = latLonToPixelInTile(lat, lon, z, x, y, RADAR_TILE_SIZE);
-  const url = `${frame.host}${frame.path}/${RADAR_TILE_SIZE}/${z}/${x}/${y}/${RADAR_COLOR_SCHEME}/1_1.png`;
+  const url = `${frame.host}${frame.path}/${RADAR_TILE_SIZE}/${z}/${x}/${y}/${RADAR_COLOR_SCHEME}/${RADAR_TILE_OPTIONS}.png`;
 
   return new Promise((resolve) => {
     const img = new Image();
@@ -244,11 +255,48 @@ export function updateAlertPolygons(features) {
   });
 }
 
+let PrecipRadarLayer = null;
+
+function getPrecipRadarLayer() {
+  if (!PrecipRadarLayer) {
+    PrecipRadarLayer = L.TileLayer.extend({
+      createTile(coords, done) {
+        const tile = document.createElement('canvas');
+        const size = this.getTileSize();
+        tile.width = size.x;
+        tile.height = size.y;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const ctx = tile.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0, tile.width, tile.height);
+            const image = ctx.getImageData(0, 0, tile.width, tile.height);
+            const data = image.data;
+            for (let i = 0; i < data.length; i += 4) {
+              if (!isDisplayedPrecip(data[i], data[i + 1], data[i + 2], data[i + 3])) data[i + 3] = 0;
+            }
+            ctx.putImageData(image, 0, 0);
+            done(null, tile);
+          } catch (error) {
+            done(error, tile);
+          }
+        };
+        img.onerror = () => done(new Error('radar tile failed'), tile);
+        img.src = this.getTileUrl(coords);
+        return tile;
+      }
+    });
+  }
+  return PrecipRadarLayer;
+}
+
 function buildRadarTileLayer(frame) {
-  return L.tileLayer(
-    `${frame.host}${frame.path}/${RADAR_TILE_SIZE}/{z}/{x}/{y}/${RADAR_COLOR_SCHEME}/1_1.png`,
+  const Layer = getPrecipRadarLayer();
+  return new Layer(
+    `${frame.host}${frame.path}/${RADAR_TILE_SIZE}/{z}/{x}/{y}/${RADAR_COLOR_SCHEME}/${RADAR_TILE_OPTIONS}.png`,
     {
-      opacity: 0.82,
+      opacity: 0.9,
       zIndex: 10,
       tileSize: RADAR_TILE_SIZE,
       zoomOffset: RADAR_ZOOM_OFFSET,

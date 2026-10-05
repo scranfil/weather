@@ -24,7 +24,8 @@ export const RADAR_DEFAULT_ZOOM = 9;
 export const RADAR_LOCAL_ZOOM = 10;
 export const RADAR_TILE_MAX_ZOOM = 7;
 export const RADAR_TILE_SIZE = 512;
-export const RADAR_COLOR_SCHEME = 6;
+export const RADAR_COLOR_SCHEME = 2;
+export const RADAR_TILE_OPTIONS = '1_0';
 export const RADAR_ZOOM_OFFSET = -1;
 
 export const BLITZORTUNG_SERVERS = [
