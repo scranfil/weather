@@ -1,8 +1,9 @@
-import { FALLBACK_LOCATION, STALE_DATA_MS } from './config.js';
+import { STALE_DATA_MS } from './config.js';
 import { requestNotificationPermission } from './alerts.js';
 import {
   addCurrentToFavorites,
   goHome,
+  homeOrFallbackLocation,
   loadFavorites,
   maybePromptSetHome,
   renderFavorites,
@@ -20,9 +21,10 @@ async function loadDefaultWeather() {
   if (nameEl) nameEl.textContent = 'Getting your location...';
   const located = await useCurrentLocation({ silent: true });
   if (!located) {
-    state.currentLat = FALLBACK_LOCATION.lat;
-    state.currentLon = FALLBACK_LOCATION.lon;
-    state.currentLocationName = FALLBACK_LOCATION.name;
+    const place = homeOrFallbackLocation();
+    state.currentLat = place.lat;
+    state.currentLon = place.lon;
+    state.currentLocationName = place.name;
     await fetchWeather(state.currentLat, state.currentLon, state.currentLocationName);
   } else {
     maybePromptSetHome();

@@ -1,8 +1,28 @@
 import { APP_USER_AGENT, NOMINATIM_EMAIL } from './config.js';
 
+const NWS_ORIGIN = 'https://api.weather.gov';
+
+let nwsProxyEnabled = true;
+
 export function nominatimUrl(base) {
   const sep = base.includes('?') ? '&' : '?';
   return `${base}${sep}email=${encodeURIComponent(NOMINATIM_EMAIL)}`;
+}
+
+export function toNwsFetchUrl(url) {
+  if (!nwsProxyEnabled || typeof url !== 'string' || !url.startsWith(NWS_ORIGIN)) return url;
+  return `/nws${url.slice(NWS_ORIGIN.length)}`;
+}
+
+export function resetNwsProxyForTests() {
+  nwsProxyEnabled = true;
+}
+
+function isMissingNwsProxy(response) {
+  if (response.headers.get('x-weather-nws-proxy') === '1') return false;
+  if (response.status === 404) return true;
+  const type = (response.headers.get('content-type') || '').toLowerCase();
+  return type.includes('text/html');
 }
 
 export async function fetchWithTimeout(resource, options = {}, timeout = 10000) {
@@ -17,12 +37,15 @@ export async function fetchWithTimeout(resource, options = {}, timeout = 10000) 
   if (url.includes('nominatim.openstreetmap.org')) {
     headers['User-Agent'] = APP_USER_AGENT;
   }
+  const target = typeof resource === 'string' ? toNwsFetchUrl(url) : resource;
   try {
-    const res = await fetch(resource, { signal: controller.signal, ...options, headers });
-    clearTimeout(id);
+    let res = await fetch(target, { signal: controller.signal, ...options, headers });
+    if (typeof resource === 'string' && target !== url && isMissingNwsProxy(res)) {
+      nwsProxyEnabled = false;
+      res = await fetch(url, { signal: controller.signal, ...options, headers });
+    }
     return res;
-  } catch (error) {
+  } finally {
     clearTimeout(id);
-    throw error;
   }
 }

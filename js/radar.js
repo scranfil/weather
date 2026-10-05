@@ -1,6 +1,6 @@
 import {
   BLITZORTUNG_SERVERS,
-  CARTO_BASEMAP_KEY,
+  cartoBasemapKey,
   LIGHTNING_MAX_AGE_MS,
   RADAR_COLOR_SCHEME,
   RADAR_DEFAULT_ZOOM,
@@ -54,7 +54,7 @@ function latLonToPixelInTile(lat, lon, zoom, tileX, tileY, tileSize = 512) {
   };
 }
 
-function isDisplayedPrecip(r, g, b, a) {
+export function isDisplayedPrecip(r, g, b, a) {
   if (a < 40) return false;
   if (b > r + 12 && b > 60) return true;
   if (g > r + 20 && g > b && g > 70) return true;
@@ -324,22 +324,45 @@ export function primeRadarForLocation(lat, lon) {
   if (radarLocationMarker) radarLocationMarker.setLatLng([lat, lon]);
 }
 
+export function radarFramesFromCatalog(data) {
+  const host = data?.host || '';
+  const past = data?.radar?.past || [];
+  const nowcast = data?.radar?.nowcast || [];
+  return {
+    pastCount: past.length,
+    forecastCount: nowcast.length,
+    frames: [
+      ...past.map(frame => ({ ...frame, host, type: 'past' })),
+      ...nowcast.map(frame => ({ ...frame, host, type: 'forecast' }))
+    ]
+  };
+}
+
+function applyForecastLoopUi(forecastCount) {
+  const showForecast = forecastCount > 0;
+  const loop = document.getElementById('radar-loop');
+  const option = loop?.querySelector('option[value="forecast"]');
+  if (option) option.hidden = !showForecast;
+  const legend = document.getElementById('radar-forecast-legend');
+  if (legend) legend.hidden = !showForecast;
+  if (!showForecast && radarLoopMode === 'forecast') {
+    radarLoopMode = 'all';
+    if (loop) loop.value = 'all';
+  }
+}
+
 export async function loadRadarFrames() {
   try {
     const res = await fetchWithTimeout('https://api.rainviewer.com/public/weather-maps.json', {}, 8000);
     const data = await res.json();
-    const host = data.host;
-    const past = data.radar.past || [];
-    const nowcast = data.radar.nowcast || [];
+    const catalog = radarFramesFromCatalog(data);
 
     Object.values(radarLayers).forEach(layer => { if (radarMap.hasLayer(layer)) radarMap.removeLayer(layer); });
     radarLayers = {};
 
-    radarPastCount = past.length;
-    radarFrames = [
-      ...past.map(f => ({ ...f, host, type: 'past' })),
-      ...nowcast.map(f => ({ ...f, host, type: 'forecast' }))
-    ];
+    radarPastCount = catalog.pastCount;
+    radarFrames = catalog.frames;
+    applyForecastLoopUi(catalog.forecastCount);
 
     radarFrames.forEach((frame, i) => {
       radarLayers[i] = buildRadarTileLayer(frame);
@@ -372,7 +395,7 @@ export async function updateRadarMap(lat, lon, options = {}) {
       minZoom: 4,
       maxZoom: 13
     });
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${CARTO_BASEMAP_KEY}`, {
+    L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${cartoBasemapKey()}`, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions/">CARTO</a>',
       maxZoom: 19,
       maxNativeZoom: 19

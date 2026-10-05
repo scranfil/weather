@@ -1,7 +1,17 @@
 /** Shared configuration for the weather PWA. */
 export const APP_USER_AGENT = 'WeatherPWA/1.0 (https://github.com/scranfil/weather; contact: weather-app@users.noreply.github.com)';
 export const NOMINATIM_EMAIL = 'weather-app@users.noreply.github.com';
+/** Referer-locked to scranfil.github.io. */
 export const CARTO_BASEMAP_KEY = 'cb1_4agh_1_c0cfb0544e369e3f6f334bc9';
+/** Referer-locked to 127.0.0.1 and localhost. A local host cannot share a key with a public site. */
+export const CARTO_LOCAL_BASEMAP_KEY = 'cb1_4agh_2_7d2050e49606758df539e4b8';
+
+export function cartoBasemapKey(hostname = globalThis.location?.hostname || '') {
+  if (hostname === '127.0.0.1' || hostname === 'localhost' || hostname.endsWith('.localhost')) {
+    return CARTO_LOCAL_BASEMAP_KEY;
+  }
+  return CARTO_BASEMAP_KEY;
+}
 
 export const AUTO_REFRESH_MS = 10 * 60 * 1000;
 export const AUTO_REFRESH_ACTIVE_MS = 3 * 60 * 1000;

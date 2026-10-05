@@ -6,6 +6,12 @@ import { getPointsData, pickBestObservationStation } from './nws.js';
 import { state } from './state.js';
 import { showToast } from './ui.js';
 
+export function homeOrFallbackLocation() {
+  const home = state.favorites.find(f => f.isHome && Number.isFinite(Number(f.lat)) && Number.isFinite(Number(f.lon)));
+  if (!home) return FALLBACK_LOCATION;
+  return { name: home.name, lat: Number(home.lat), lon: Number(home.lon) };
+}
+
 export function loadFavorites() {
   const saved = localStorage.getItem('weatherFavorites');
   if (saved) {

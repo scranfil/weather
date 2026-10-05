@@ -238,7 +238,7 @@
                     <select id="radar-loop" class="radar-select" title="Loop mode">
                         <option value="all">All</option>
                         <option value="past">Past</option>
-                        <option value="forecast">Forecast</option>
+                        <option value="forecast" hidden>Forecast</option>
                     </select>
                     <select id="radar-speed" class="radar-select" title="Playback speed">
                         <option value="1200">0.5x</option>
@@ -253,7 +253,7 @@
                 </div>
                 <div class="px-4 pb-3 bg-zinc-900/30 text-xs text-zinc-500 flex items-center justify-between flex-wrap gap-2">
                     <div class="flex items-center gap-3 flex-wrap">
-                        <span>RainViewer • <span class="radar-frame-past">&#9632; Past</span> &nbsp;<span class="radar-frame-forecast">&#9632; Forecast</span></span>
+                        <span>RainViewer • <span class="radar-frame-past">&#9632; Past</span><span id="radar-forecast-legend" hidden> &nbsp;<span class="radar-frame-forecast">&#9632; Forecast</span></span></span>
                         <button id="radar-lightning-btn" class="radar-mini-btn flex items-center gap-1" title="Toggle live lightning strikes">
                             <i class="fa-solid fa-bolt text-amber-300"></i> Lightning
                         </button>

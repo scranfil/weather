@@ -4,6 +4,8 @@
   "description": "",
   "main": "sw.js",
   "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs",
     "build:css": "tailwindcss -c tailwind.config.cjs -i ./css/tailwind-input.css -o ./css/tailwind.css --minify"
   },
   "repository": {

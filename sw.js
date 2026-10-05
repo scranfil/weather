@@ -1,4 +1,5 @@
-const CACHE_NAME = 'weather-pwa-v7';
+const CACHE_NAME = 'weather-pwa-v8';
+const NWS_USER_AGENT = 'WeatherPWA/1.0 (https://github.com/scranfil/weather; contact: weather-app@users.noreply.github.com)';
 const APP_SHELL = [
   './',
   './index.html',
@@ -132,14 +133,40 @@ self.addEventListener('periodicsync', event => {
   }
 });
 
+function isCodeAsset(url) {
+  return url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+}
+
+function isNwsProxyPath(url) {
+  return url.pathname === '/nws' || url.pathname.startsWith('/nws/');
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response && response.ok && response.type === 'basic') {
+      const copy = response.clone();
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, copy);
+    }
+    return response;
+  } catch {
+    return (await caches.match(request)) || caches.match('./index.html');
+  }
+}
+
 async function checkBackgroundAlerts() {
   await ensureReady();
   if (!storedLocation) return;
   try {
-    const res = await fetch(
-      `https://api.weather.gov/alerts/active?point=${storedLocation.lat},${storedLocation.lon}`,
-      { headers: { 'User-Agent': 'WeatherPWA/1.0 (https://github.com/scranfil/weather)', Accept: 'application/geo+json' } }
-    );
+    const alertPath = `/alerts/active?point=${storedLocation.lat},${storedLocation.lon}`;
+    const headers = { 'User-Agent': NWS_USER_AGENT, Accept: 'application/geo+json' };
+    let res = await fetch(`/nws${alertPath}`, { headers });
+    const type = (res.headers.get('content-type') || '').toLowerCase();
+    const proxied = res.headers.get('x-weather-nws-proxy') === '1';
+    if (!proxied && (res.status === 404 || type.includes('text/html'))) {
+      res = await fetch(`https://api.weather.gov${alertPath}`, { headers });
+    }
     if (!res.ok) return;
     const data = await res.json();
     const features = data.features || [];
@@ -166,6 +193,7 @@ self.addEventListener('fetch', event => {
   const reqUrl = new URL(event.request.url);
   const isSameOrigin = reqUrl.origin === self.location.origin;
   if (!isSameOrigin) return;
+  if (isNwsProxyPath(reqUrl)) return;
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -177,6 +205,11 @@ self.addEventListener('fetch', event => {
         return response;
       }).catch(() => caches.match('./index.html'))
     );
+    return;
+  }
+
+  if (isCodeAsset(reqUrl)) {
+    event.respondWith(networkFirst(event.request));
     return;
   }
 
