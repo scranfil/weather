@@ -1,0 +1,30 @@
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sw.js",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.cjs -i ./css/tailwind-input.css -o ./css/tailwind.css --minify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scranfil/weather.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/scranfil/weather/issues"
+  },
+  "homepage": "https://github.com/scranfil/weather#readme",
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/space-grotesk": "^5.2.5",
+    "@fortawesome/fontawesome-free": "^6.5.1",
+    "leaflet": "^1.9.4"
+  }
+}

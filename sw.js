@@ -1,48 +1,128 @@
-const CACHE_NAME = 'weather-pwa-v2';
+const CACHE_NAME = 'weather-pwa-v5';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './css/app.css',
+  './css/tailwind.css',
+  './vendor/fonts/fonts.css',
+  './vendor/fonts/inter-latin-300-normal.woff2',
+  './vendor/fonts/inter-latin-400-normal.woff2',
+  './vendor/fonts/inter-latin-500-normal.woff2',
+  './vendor/fonts/space-grotesk-latin-500-normal.woff2',
+  './vendor/fonts/space-grotesk-latin-600-normal.woff2',
+  './vendor/leaflet/leaflet.css',
+  './vendor/leaflet/leaflet.js',
+  './vendor/leaflet/images/layers.png',
+  './vendor/leaflet/images/layers-2x.png',
+  './vendor/leaflet/images/marker-icon.png',
+  './vendor/leaflet/images/marker-icon-2x.png',
+  './vendor/leaflet/images/marker-shadow.png',
+  './vendor/fontawesome/css/all.min.css',
+  './vendor/fontawesome/webfonts/fa-solid-900.woff2',
+  './vendor/fontawesome/webfonts/fa-regular-400.woff2',
+  './vendor/fontawesome/webfonts/fa-brands-400.woff2',
+  './vendor/fontawesome/webfonts/fa-v4compatibility.woff2',
+  './js/app.js',
+  './js/alerts.js',
+  './js/conditions.js',
+  './js/config.js',
+  './js/favorites.js',
+  './js/format.js',
+  './js/geocode.js',
+  './js/net.js',
+  './js/nws.js',
+  './js/pwa.js',
+  './js/radar.js',
+  './js/state.js',
+  './js/ui.js',
+  './js/weather.js'
 ];
 
-const CDN_ASSETS = [
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Space+Grotesk:wght@500;600&display=swap'
-];
+const DB_NAME = 'weather-sw';
+const DB_STORE = 'kv';
+const SEEN_ALERT_LIMIT = 300;
 
-const NWS_UA = 'WeatherPWA/1.0 (https://github.com/scranfil/weather)';
 let storedLocation = null;
 const seenAlertIds = new Set();
 
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function idbGet(key) {
+  return openDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+function idbSet(key, value) {
+  return openDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+let readyPromise = null;
+function ensureReady() {
+  if (!readyPromise) {
+    readyPromise = (async () => {
+      const location = await idbGet('location');
+      if (location && Number.isFinite(location.lat) && Number.isFinite(location.lon)) {
+        storedLocation = { lat: location.lat, lon: location.lon };
+      }
+      const ids = await idbGet('seenAlertIds');
+      if (Array.isArray(ids)) {
+        ids.filter(Boolean).forEach(id => seenAlertIds.add(id));
+      }
+    })().catch(() => {});
+  }
+  return readyPromise;
+}
+
+function rememberAlertId(id) {
+  seenAlertIds.add(id);
+  const trimmed = [...seenAlertIds].slice(-SEEN_ALERT_LIMIT);
+  seenAlertIds.clear();
+  trimmed.forEach(item => seenAlertIds.add(item));
+  return idbSet('seenAlertIds', trimmed).catch(() => {});
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async cache => {
-      await cache.addAll(APP_SHELL);
-      await Promise.allSettled(CDN_ASSETS.map(url => fetch(url).then(r => {
-        if (r.ok) return cache.put(url, r);
-      })));
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(key => (key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(key => (key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())));
+    await ensureReady();
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('message', event => {
   const data = event.data || {};
   if (data.type === 'SET_LOCATION' && Number.isFinite(data.lat) && Number.isFinite(data.lon)) {
     storedLocation = { lat: data.lat, lon: data.lon };
+    idbSet('location', storedLocation).catch(() => {});
   }
 });
 
@@ -53,20 +133,21 @@ self.addEventListener('periodicsync', event => {
 });
 
 async function checkBackgroundAlerts() {
+  await ensureReady();
   if (!storedLocation) return;
   try {
     const res = await fetch(
       `https://api.weather.gov/alerts/active?point=${storedLocation.lat},${storedLocation.lon}`,
-      { headers: { 'User-Agent': NWS_UA, Accept: 'application/geo+json' } }
+      { headers: { 'User-Agent': 'WeatherPWA/1.0 (https://github.com/scranfil/weather)', Accept: 'application/geo+json' } }
     );
     if (!res.ok) return;
     const data = await res.json();
     const features = data.features || [];
-    for (const f of features) {
-      const id = f.id || f.properties?.id || f.properties?.event;
+    for (const feature of features) {
+      const id = feature.id || feature.properties?.id || feature.properties?.event;
       if (!id || seenAlertIds.has(id)) continue;
-      seenAlertIds.add(id);
-      const props = f.properties || {};
+      await rememberAlertId(id);
+      const props = feature.properties || {};
       await self.registration.showNotification(props.event || 'Weather Alert', {
         body: props.headline || props.description || 'Open the weather app for details.',
         icon: './icon.svg',
@@ -74,7 +155,7 @@ async function checkBackgroundAlerts() {
         tag: id
       });
     }
-  } catch (e) {
+  } catch (error) {
     // ignore background failures
   }
 }
@@ -84,7 +165,7 @@ self.addEventListener('fetch', event => {
 
   const reqUrl = new URL(event.request.url);
   const isSameOrigin = reqUrl.origin === self.location.origin;
-  const isCdn = CDN_ASSETS.some(u => event.request.url.startsWith(u.split('?')[0]));
+  if (!isSameOrigin) return;
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -98,21 +179,6 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
-
-  if (isCdn) {
-    event.respondWith(
-      caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-        if (response && response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        }
-        return response;
-      }))
-    );
-    return;
-  }
-
-  if (!isSameOrigin) return;
 
   event.respondWith(
     caches.match(event.request).then(cached => {
