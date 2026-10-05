@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weather-pwa-v5';
+const CACHE_NAME = 'weather-pwa-v6';
 const APP_SHELL = [
   './',
   './index.html',

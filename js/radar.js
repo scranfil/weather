@@ -54,12 +54,11 @@ function latLonToPixelInTile(lat, lon, zoom, tileX, tileY, tileSize = 512) {
 }
 
 function interpretRadarPixel(r, g, b, a) {
-  if (a < 40) return null;
-  if (r > 220 && g > 220 && b > 220) return null;
-  if (r > 170 && g < 120 && b < 120) return { text: 'Heavy Rain', severity: 72 };
-  if (r > 140 && g > 100 && b < 80) return { text: 'Thunderstorms', severity: 85 };
-  if (g > 100 && r < 160) return { text: 'Rain', severity: 58 };
-  if (g > 50 || b > 90) return { text: 'Light Rain', severity: 48 };
+  if (a < 120) return null;
+  if (r > 140 && b > 120 && g < 100) return { text: 'Thunderstorms', severity: 85 };
+  if (r > 180 && g < 90 && b < 90) return { text: 'Heavy Rain', severity: 74 };
+  if (r > 180 && g > 140 && b < 80) return { text: 'Rain', severity: 64 };
+  if (g > r + 40 && g > b + 30 && g > 90) return { text: 'Light Rain', severity: 52 };
   return null;
 }
 

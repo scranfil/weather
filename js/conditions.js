@@ -203,16 +203,21 @@ export function parseNwsWindMph(windSpeedText) {
   return match ? parseInt(match[1], 10) : null;
 }
 
+export function observationWindMph(observation) {
+  const wind = observation?.windSpeed;
+  if (!wind || !Number.isFinite(wind.value)) return null;
+  const unit = wind.unitCode || '';
+  if (unit.includes('km_h')) return wind.value * 0.621371;
+  if (unit.includes('m_s')) return wind.value * 2.236936;
+  if (unit.includes('mi_h') || unit.includes('[mi_i]')) return wind.value;
+  return null;
+}
+
 export function getDisplayWindMph(observation, hourlyPeriods) {
-  const hourlyNow = getCurrentHourlyPeriod(hourlyPeriods);
-  const hourlyMph = parseNwsWindMph(hourlyNow?.windSpeed);
+  const obsMph = observationWindMph(observation);
+  if (Number.isFinite(obsMph)) return Math.round(obsMph);
 
-  if (observation?.windSpeed && Number.isFinite(observation.windSpeed.value)) {
-    const obsMph = Math.round(observation.windSpeed.value * 2.237);
-    if (obsMph === 0 && Number.isFinite(hourlyMph) && hourlyMph > 0) return hourlyMph;
-    return obsMph;
-  }
-
+  const hourlyMph = parseNwsWindMph(getCurrentHourlyPeriod(hourlyPeriods)?.windSpeed);
   return Number.isFinite(hourlyMph) ? hourlyMph : '--';
 }
 
@@ -398,11 +403,13 @@ export function resolveCurrentCondition(observation, hourlyPeriods, forecastPeri
   const best = candidates.reduce((a, b) => (b.severity > a.severity ? b : a));
 
   if (obsCandidate && !isObservationStale(observation)) {
-    if (best.source === 'alert' || best.source === 'precip-obs' || best.source === 'lightning' || best.source === 'radar') return best.text;
-    if (best.severity >= obsCandidate.severity + 25) return best.text;
-    if (best.source === 'grid' && best.severity >= 55 && obsCandidate.severity < 35) return best.text;
-    if (best.source === 'hourly' && best.severity >= 50 && obsCandidate.severity < 30) return best.text;
-    if (best.source === 'minutely' && best.severity >= 50) return best.text;
+    const skyOnly = !/rain|drizzle|shower|snow|sleet|thunder|storm|hail|freezing|ice/.test(obsCandidate.text.toLowerCase());
+    if (best.source === 'alert' || best.source === 'precip-obs' || best.source === 'lightning') return best.text;
+    if (best.source === 'radar' && (!skyOnly || best.severity >= 74)) return best.text;
+    if (!skyOnly && best.severity >= obsCandidate.severity + 25) return best.text;
+    if (!skyOnly && best.source === 'grid' && best.severity >= 55 && obsCandidate.severity < 35) return best.text;
+    if (!skyOnly && best.source === 'hourly' && best.severity >= 50 && obsCandidate.severity < 30) return best.text;
+    if (!skyOnly && best.source === 'minutely' && best.severity >= 50) return best.text;
     return obsCandidate.text;
   }
 
