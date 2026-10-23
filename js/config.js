@@ -1,5 +1,5 @@
 /** Shared configuration for the weather PWA. */
-export const APP_USER_AGENT = 'WeatherPWA/1.0 (https://github.com/scranfil/weather; contact: weather-app@users.noreply.github.com)';
+export const APP_USER_AGENT = 'WeatherPWA/1.1 (https://github.com/scranfil/weather; contact: weather-app@users.noreply.github.com)';
 export const NOMINATIM_EMAIL = 'weather-app@users.noreply.github.com';
 /** Referer-locked to scranfil.github.io. */
 export const CARTO_BASEMAP_KEY = 'cb1_4agh_1_c0cfb0544e369e3f6f334bc9';

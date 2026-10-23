@@ -1,6 +1,6 @@
 {
   "name": "weather",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Installable weather PWA with NWS forecasts, radar, and alerts.",
   "main": "server.mjs",
   "type": "module",
