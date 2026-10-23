@@ -1,10 +1,13 @@
-const CACHE_NAME = 'weather-pwa-v8';
-const NWS_USER_AGENT = 'WeatherPWA/1.0 (https://github.com/scranfil/weather; contact: weather-app@users.noreply.github.com)';
+import { APP_USER_AGENT } from './js/config.js';
+
+const CACHE_NAME = 'weather-pwa-v9';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
   './css/app.css',
   './css/tailwind.css',
   './vendor/fonts/fonts.css',
@@ -22,9 +25,6 @@ const APP_SHELL = [
   './vendor/leaflet/images/marker-shadow.png',
   './vendor/fontawesome/css/all.min.css',
   './vendor/fontawesome/webfonts/fa-solid-900.woff2',
-  './vendor/fontawesome/webfonts/fa-regular-400.woff2',
-  './vendor/fontawesome/webfonts/fa-brands-400.woff2',
-  './vendor/fontawesome/webfonts/fa-v4compatibility.woff2',
   './js/app.js',
   './js/alerts.js',
   './js/conditions.js',
@@ -133,6 +133,22 @@ self.addEventListener('periodicsync', event => {
   }
 });
 
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of allClients) {
+      if ('focus' in client) {
+        await client.focus();
+        return;
+      }
+    }
+    if (self.clients.openWindow) {
+      await self.clients.openWindow('./');
+    }
+  })());
+});
+
 function isCodeAsset(url) {
   return url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
 }
@@ -160,7 +176,7 @@ async function checkBackgroundAlerts() {
   if (!storedLocation) return;
   try {
     const alertPath = `/alerts/active?point=${storedLocation.lat},${storedLocation.lon}`;
-    const headers = { 'User-Agent': NWS_USER_AGENT, Accept: 'application/geo+json' };
+    const headers = { 'User-Agent': APP_USER_AGENT, Accept: 'application/geo+json' };
     let res = await fetch(`/nws${alertPath}`, { headers });
     const type = (res.headers.get('content-type') || '').toLowerCase();
     const proxied = res.headers.get('x-weather-nws-proxy') === '1';
@@ -177,12 +193,12 @@ async function checkBackgroundAlerts() {
       const props = feature.properties || {};
       await self.registration.showNotification(props.event || 'Weather Alert', {
         body: props.headline || props.description || 'Open the weather app for details.',
-        icon: './icon.svg',
-        badge: './icon.svg',
+        icon: './icon-192.png',
+        badge: './icon-192.png',
         tag: id
       });
     }
-  } catch (error) {
+  } catch {
     // ignore background failures
   }
 }

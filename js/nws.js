@@ -1,6 +1,5 @@
 import { MAX_OBS_AGE_MIN, POINTS_CACHE_MS } from './config.js';
 import {
-  getCurrentHourlyPeriod,
   getObservationPrecipMm,
   getTodayHighFromHourly,
   haversineKm

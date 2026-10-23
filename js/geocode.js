@@ -28,7 +28,7 @@ async function resolveLocationNameFromNws(lat, lon) {
     if (city && state) return `${city}, ${state}`;
     if (city) return city;
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -49,7 +49,7 @@ export async function resolveLocationName(lat, lon) {
         return geoData.display_name.split(',')[0].trim();
       }
     }
-  } catch (error) {
+  } catch {
     // fall through to NWS
   }
   return resolveLocationNameFromNws(lat, lon);
@@ -77,7 +77,7 @@ export async function searchLocation() {
     } else {
       showToast('Location not found.', 'warning');
     }
-  } catch (error) {
+  } catch {
     showToast('Search failed.', 'error');
   }
 }
@@ -98,7 +98,7 @@ export function useCurrentLocation(options = {}) {
         const resolvedName = await resolveLocationName(lat, lon);
         await fetchWeather(lat, lon, resolvedName);
         resolve(true);
-      } catch (error) {
+      } catch {
         if (!silent) showToast('Unable to get your location.', 'error');
         resolve(false);
       }
@@ -109,6 +109,10 @@ export function useCurrentLocation(options = {}) {
   });
 }
 
+function placeLabel(result) {
+  return result.address?.city || result.address?.town || result.address?.village || result.address?.county || result.name;
+}
+
 export function bindSearchAutocomplete() {
   let acDebounce = null;
   let acResults = [];
@@ -117,13 +121,34 @@ export function bindSearchAutocomplete() {
   const acList = document.getElementById('autocomplete-list');
   if (!input || !acList) return;
 
+  acList.setAttribute('role', 'listbox');
+  acList.id = acList.id || 'autocomplete-list';
+  input.setAttribute('role', 'combobox');
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-controls', acList.id);
+  input.setAttribute('aria-expanded', 'false');
+  input.setAttribute('aria-haspopup', 'listbox');
+
   function close() {
     acList.classList.remove('open');
     acList.replaceChildren();
     acResults = [];
     acIndex = -1;
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
   }
   closeAutocomplete = close;
+
+  function setActiveOption(index) {
+    const items = acList.querySelectorAll('[role="option"]');
+    acIndex = index;
+    items.forEach((el, i) => {
+      const active = i === acIndex;
+      el.classList.toggle('active', active);
+      el.setAttribute('aria-selected', active ? 'true' : 'false');
+      if (active) input.setAttribute('aria-activedescendant', el.id);
+    });
+  }
 
   function renderAutocomplete(results) {
     acResults = results;
@@ -133,14 +158,18 @@ export function bindSearchAutocomplete() {
       close();
       return;
     }
-    results.forEach((result) => {
-      const city = result.address?.city || result.address?.town || result.address?.village || result.address?.county || result.name;
+    results.forEach((result, index) => {
+      const city = placeLabel(result);
       const country = result.address?.country || '';
       const region = result.address?.state || '';
       const sub = [region, country].filter(Boolean).join(', ');
       const li = document.createElement('li');
+      li.id = `autocomplete-option-${index}`;
+      li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', 'false');
       const icon = document.createElement('i');
       icon.className = 'fa-solid fa-location-dot ac-icon';
+      icon.setAttribute('aria-hidden', 'true');
       const main = document.createElement('span');
       main.className = 'ac-main';
       main.textContent = city;
@@ -157,6 +186,7 @@ export function bindSearchAutocomplete() {
       acList.appendChild(li);
     });
     acList.classList.add('open');
+    input.setAttribute('aria-expanded', 'true');
   }
 
   input.addEventListener('input', function () {
@@ -175,27 +205,25 @@ export function bindSearchAutocomplete() {
         );
         const data = await res.json();
         renderAutocomplete(data);
-      } catch (error) {
+      } catch {
         close();
       }
     }, 280);
   });
 
   input.addEventListener('keydown', function (event) {
-    const items = acList.querySelectorAll('li');
+    const items = acList.querySelectorAll('[role="option"]');
     if (!items.length) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      acIndex = Math.min(acIndex + 1, items.length - 1);
-      items.forEach((el, i) => el.classList.toggle('active', i === acIndex));
+      setActiveOption(Math.min(acIndex + 1, items.length - 1));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      acIndex = Math.max(acIndex - 1, 0);
-      items.forEach((el, i) => el.classList.toggle('active', i === acIndex));
+      setActiveOption(Math.max(acIndex - 1, 0));
     } else if (event.key === 'Enter' && acIndex >= 0) {
       event.preventDefault();
       const result = acResults[acIndex];
-      const city = result.address?.city || result.address?.town || result.address?.village || result.address?.county || result.name;
+      const city = placeLabel(result);
       input.value = city;
       close();
       fetchWeather(parseFloat(result.lat), parseFloat(result.lon), city);

@@ -1,5 +1,5 @@
 import { STALE_DATA_MS } from './config.js';
-import { requestNotificationPermission } from './alerts.js';
+import { enableAlertNotifications, syncNotificationPermission } from './alerts.js';
 import {
   addCurrentToFavorites,
   goHome,
@@ -11,9 +11,16 @@ import {
 } from './favorites.js';
 import { bindSearchAutocomplete, searchLocation, useCurrentLocation } from './geocode.js';
 import { bindInstallPrompt, registerBackgroundAlertSync, registerServiceWorker, shareApp } from './pwa.js';
-import { bindRadarControls, pruneLightningStrikes, renderLightningStrikes, startPassiveLightningFeed } from './radar.js';
+import { bindRadarControls, pruneLightningStrikes, renderLightningStrikes } from './radar.js';
 import { state } from './state.js';
-import { closeForecastModal, updateHourlyForecast, updateUnitToggleButton } from './ui.js';
+import {
+  bindForecastModalA11y,
+  closeForecastModal,
+  setOfflineState,
+  updateFreshnessBadge,
+  updateHourlyForecast,
+  updateUnitToggleButton
+} from './ui.js';
 import { fetchWeather, initializeAlertDismissals, manualRefresh, startAutoRefresh, toggleTempUnit } from './weather.js';
 
 async function loadDefaultWeather() {
@@ -32,16 +39,16 @@ async function loadDefaultWeather() {
 }
 
 function initializeWeatherApp() {
-  requestNotificationPermission();
+  syncNotificationPermission();
   registerBackgroundAlertSync();
   updateUnitToggleButton();
   loadFavorites();
   renderFavorites();
-  startPassiveLightningFeed();
+  updateFreshnessBadge();
   loadDefaultWeather();
 
-  window.addEventListener('online', () => { setOfflineFromApp(false); manualRefresh(); });
-  window.addEventListener('offline', () => setOfflineFromApp(true));
+  window.addEventListener('online', () => { setOfflineState(false); updateFreshnessBadge(); manualRefresh(); });
+  window.addEventListener('offline', () => { setOfflineState(true); updateFreshnessBadge(); });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && state.lastWeatherFetchAt && (Date.now() - state.lastWeatherFetchAt) > STALE_DATA_MS) {
       fetchWeather(state.currentLat, state.currentLon, state.currentLocationName, { silent: true });
@@ -64,6 +71,9 @@ function initializeWeatherApp() {
   document.getElementById('set-home-btn')?.addEventListener('click', setHomeFromCurrent);
   document.getElementById('add-favorite-btn')?.addEventListener('click', addCurrentToFavorites);
   document.getElementById('share-btn')?.addEventListener('click', shareApp);
+  document.getElementById('enable-alerts-btn')?.addEventListener('click', () => {
+    enableAlertNotifications();
+  });
   document.getElementById('hourly-expand-btn')?.addEventListener('click', () => {
     state.hourlyDisplayHours = state.hourlyDisplayHours >= 48 ? 24 : 48;
     const btn = document.getElementById('hourly-expand-btn');
@@ -74,6 +84,7 @@ function initializeWeatherApp() {
   document.getElementById('forecast-modal')?.addEventListener('click', closeForecastModal);
   document.getElementById('forecast-modal-card')?.addEventListener('click', (event) => event.stopPropagation());
   document.getElementById('forecast-modal-close')?.addEventListener('click', closeForecastModal);
+  bindForecastModalA11y();
 
   document.addEventListener('weather:refresh', () => { manualRefresh(); });
   document.addEventListener('weather:open-location', (event) => {
@@ -86,10 +97,6 @@ function initializeWeatherApp() {
   bindSearchAutocomplete();
 }
 
-function setOfflineFromApp(isOffline) {
-  document.getElementById('offline-banner')?.classList.toggle('hidden', !isOffline);
-}
-
 initializeAlertDismissals();
 bindInstallPrompt();
 registerServiceWorker();
@@ -98,6 +105,7 @@ startAutoRefresh();
 setInterval(() => {
   pruneLightningStrikes();
   renderLightningStrikes();
+  updateFreshnessBadge();
 }, 60000);
 
 if (document.readyState === 'complete') initializeWeatherApp();
