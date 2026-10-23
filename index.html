@@ -12,29 +12,28 @@
     
     <link rel="manifest" href="./manifest.webmanifest">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="./icon.svg">
+    <link rel="apple-touch-icon" href="./icon-192.png">
 
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='45' cy='45' r='22' fill='%23fbbf24'/%3E%3Cpath d='M30 58 Q50 78 70 58 Q80 72 70 82 Q50 92 30 82 Q20 72 30 58' fill='%2360a5fa'/%3E%3C/svg%3E" type="image/svg+xml">
 
     <link rel="stylesheet" href="./css/tailwind.css">
     <link rel="stylesheet" href="./vendor/fontawesome/css/all.min.css">
-    <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
     <link rel="stylesheet" href="./vendor/fonts/fonts.css">
     <link rel="stylesheet" href="./css/app.css">
 </head>
 <body class="bg-zinc-950 text-white">
-    <div id="offline-banner" class="offline-banner hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100">
-        <i class="fa-solid fa-wifi-slash mr-2"></i>You're offline — showing last saved weather when available.
+    <div id="offline-banner" class="offline-banner hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100" role="status" aria-live="polite">
+        <i class="fa-solid fa-wifi-slash mr-2" aria-hidden="true"></i>You're offline — showing last saved weather when available.
     </div>
-    <div id="stale-banner" class="stale-banner hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100">
-        <i class="fa-solid fa-clock-rotate-left mr-2"></i><span id="stale-banner-text">Data may be outdated.</span>
+    <div id="stale-banner" class="stale-banner hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100" role="status" aria-live="polite">
+        <i class="fa-solid fa-clock-rotate-left mr-2" aria-hidden="true"></i><span id="stale-banner-text">Data may be outdated.</span>
     </div>
 
     <!-- Navbar -->
-    <nav class="border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl fixed w-full z-50">
+    <nav class="border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl fixed w-full z-50" aria-label="Main">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3 sm:gap-4">
             <div class="flex items-center gap-x-3 flex-shrink-0">
-                <div class="w-9 h-9 bg-blue-600 rounded-2xl flex items-center justify-center">
+                <div class="w-9 h-9 bg-blue-600 rounded-2xl flex items-center justify-center" aria-hidden="true">
                     <i class="fa-solid fa-cloud-sun text-white text-2xl"></i>
                 </div>
                 <div class="flex items-center gap-2">
@@ -45,27 +44,29 @@
             
             <div class="nav-controls flex items-center gap-x-2 sm:gap-x-3 flex-1 min-w-0 justify-end">
                 <div class="relative flex-1 min-w-0 sm:min-w-[14rem] lg:min-w-[20rem]" id="search-wrapper">
+                    <label for="location-input" class="sr-only">Search city or ZIP code</label>
                     <input id="location-input" type="text" placeholder="Enter ZIP or city..." 
                            class="w-full bg-zinc-900 border border-white/10 text-white placeholder-zinc-400 rounded-3xl py-2.5 pl-11 pr-4 focus:outline-none focus:border-blue-500 text-sm"
-                           autocomplete="off">
-                    <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-400"></i>
-                    <ul id="autocomplete-list" class="autocomplete-list"></ul>
+                           autocomplete="off"
+                           aria-label="Search city or ZIP code">
+                    <i class="fa-solid fa-search absolute left-4 top-3.5 text-zinc-400" aria-hidden="true"></i>
+                    <ul id="autocomplete-list" class="autocomplete-list" role="listbox" aria-label="Location suggestions"></ul>
                 </div>
-                <button id="search-btn" class="flex-shrink-0 px-4 sm:px-5 py-2.5 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors font-semibold rounded-3xl text-sm">Search</button>
-                <button id="refresh-btn" class="flex-shrink-0 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10" title="Refresh weather">
-                    <i id="refresh-btn-icon" class="fa-solid fa-arrows-rotate"></i>
+                <button id="search-btn" type="button" class="flex-shrink-0 px-4 sm:px-5 py-2.5 bg-white text-zinc-900 hover:bg-zinc-100 transition-colors font-semibold rounded-3xl text-sm">Search</button>
+                <button id="refresh-btn" type="button" class="flex-shrink-0 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10" title="Refresh weather" aria-label="Refresh weather">
+                    <i id="refresh-btn-icon" class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
                 </button>
-                <button id="unit-toggle-btn" class="flex-shrink-0 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm font-semibold border border-white/10" title="Toggle °F / °C">°F</button>
-                <button id="location-btn" class="flex-shrink-0 px-3 sm:px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10">
-                    <i class="fa-solid fa-location-crosshairs"></i>
+                <button id="unit-toggle-btn" type="button" class="flex-shrink-0 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm font-semibold border border-white/10" title="Toggle °F / °C" aria-label="Toggle temperature units">°F</button>
+                <button id="location-btn" type="button" class="flex-shrink-0 px-3 sm:px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10" aria-label="Use my location">
+                    <i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i>
                     <span class="hidden md:inline">My Location</span>
                 </button>
-                <button id="share-btn" class="flex-shrink-0 px-3 sm:px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10" title="Share this app">
-                    <i class="fa-solid fa-share-from-square"></i>
+                <button id="share-btn" type="button" class="flex-shrink-0 px-3 sm:px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-white/10" title="Share this app" aria-label="Share this app">
+                    <i class="fa-solid fa-share-from-square" aria-hidden="true"></i>
                     <span class="hidden md:inline">Share</span>
                 </button>
-                <button id="install-btn" class="hidden flex-shrink-0 px-3 sm:px-4 py-2.5 bg-blue-600 hover:bg-blue-500 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-blue-400/40">
-                    <i class="fa-solid fa-download"></i>
+                <button id="install-btn" type="button" class="hidden flex-shrink-0 px-3 sm:px-4 py-2.5 bg-blue-600 hover:bg-blue-500 transition-colors rounded-3xl text-sm flex items-center gap-x-2 border border-blue-400/40" aria-label="Install app">
+                    <i class="fa-solid fa-download" aria-hidden="true"></i>
                     <span class="hidden sm:inline">Install</span>
                 </button>
             </div>
@@ -77,60 +78,68 @@
         <div class="flex items-center justify-between mb-2 px-1">
             <div class="text-xs font-semibold text-zinc-400 tracking-widest">FAVORITES</div>
             <div class="flex items-center gap-2">
-                <button id="go-home-btn"
+                <button id="go-home-btn" type="button"
                         class="flex items-center gap-x-1.5 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 transition-colors px-3 py-1 rounded-full text-emerald-200 border border-emerald-400/30">
-                    <i class="fa-solid fa-home text-[10px]"></i>
+                    <i class="fa-solid fa-home text-[10px]" aria-hidden="true"></i>
                     <span class="font-medium">Home</span>
                 </button>
                 <button id="set-home-btn" type="button" 
                         class="flex items-center gap-x-1.5 text-xs bg-white/10 hover:bg-white/20 transition-colors px-3 py-1 rounded-full text-emerald-300">
-                    <i class="fa-solid fa-map-pin text-[10px]"></i>
+                    <i class="fa-solid fa-map-pin text-[10px]" aria-hidden="true"></i>
                     <span class="font-medium">Set Home</span>
                 </button>
                 <button id="add-favorite-btn" type="button" 
                         class="flex items-center gap-x-1.5 text-xs bg-white/10 hover:bg-white/20 transition-colors px-3 py-1 rounded-full text-blue-300">
-                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i>
                     <span class="font-medium">Add Current</span>
                 </button>
             </div>
         </div>
         
         <div id="favorites-bar" 
-             class="flex gap-2.5 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+             class="flex gap-2.5 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory"
+             role="list"
+             aria-label="Favorite locations">
             <!-- Populated dynamically by JavaScript -->
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-12">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-12">
         <div id="alerts-section" class="mb-6 hidden">
-            <div class="section-title flex items-center gap-x-3 mb-3 px-1">
-                <i class="fa-solid fa-triangle-exclamation text-orange-300"></i>
-                <span>Severe Weather Alerts</span>
+            <div class="section-title flex items-center justify-between gap-x-3 mb-3 px-1">
+                <div class="flex items-center gap-x-3">
+                    <i class="fa-solid fa-triangle-exclamation text-orange-300" aria-hidden="true"></i>
+                    <span>Severe Weather Alerts</span>
+                </div>
+                <button id="enable-alerts-btn" type="button"
+                        class="hidden text-xs bg-amber-500/20 hover:bg-amber-500/30 transition-colors px-3 py-1 rounded-full text-amber-100 border border-amber-400/30">
+                    Enable notifications
+                </button>
             </div>
             <div id="alerts-list" class="space-y-2"></div>
         </div>
 
         <!-- Current Weather -->
-        <div class="mb-8">
+        <section class="mb-8" aria-labelledby="location-name">
             <div id="current-weather" class="weather-gradient rounded-3xl p-6 sm:p-8 md:p-10 text-white shadow-2xl weather-card stunning-bg">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
                     <div class="flex-1">
                         <div class="flex items-center flex-wrap gap-x-3 gap-y-2 mb-1">
-                            <div id="location-name" class="text-4xl font-semibold tracking-tighter"></div>
-                            <div class="px-2.5 py-0.5 bg-white/20 text-xs font-medium rounded-full flex items-center gap-x-1">
-                                <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></div>
-                                <span>Live</span>
+                            <h1 id="location-name" class="text-4xl font-semibold tracking-tighter"></h1>
+                            <div id="freshness-badge" class="px-2.5 py-0.5 bg-white/20 text-xs font-medium rounded-full flex items-center gap-x-1" aria-live="polite">
+                                <div id="freshness-badge-dot" class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" aria-hidden="true"></div>
+                                <span id="freshness-badge-label">Live</span>
                             </div>
                         </div>
                         <div id="current-date" class="text-blue-200 text-sm font-medium mb-3"></div>
 
-                        <div id="main-alert-strip" class="main-alert-strip hidden rounded-2xl px-4 py-2.5 text-sm text-amber-50 mb-3 flex items-center gap-x-2 font-medium">
-                            <i class="fa-solid fa-triangle-exclamation text-amber-300"></i>
+                        <div id="main-alert-strip" class="main-alert-strip hidden rounded-2xl px-4 py-2.5 text-sm text-amber-50 mb-3 flex items-center gap-x-2 font-medium" role="status">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-300" aria-hidden="true"></i>
                             <span id="main-alert-strip-text"></span>
                         </div>
 
                         <div id="right-now-insight" class="right-now-insight insight-chip hidden rounded-2xl px-4 py-2.5 text-sm text-blue-50 mb-3 flex items-center gap-x-2">
-                            <i id="right-now-insight-icon" class="fa-solid fa-circle-info text-blue-200"></i>
+                            <i id="right-now-insight-icon" class="fa-solid fa-circle-info text-blue-200" aria-hidden="true"></i>
                             <span id="right-now-insight-text"></span>
                         </div>
 
@@ -145,101 +154,103 @@
 
                         <div class="flex items-center gap-x-6 text-sm">
                             <div class="flex items-center gap-x-2">
-                                <i class="fa-solid fa-arrow-up text-emerald-400"></i>
+                                <i class="fa-solid fa-arrow-up text-emerald-400" aria-hidden="true"></i>
                                 <span id="high-temp" class="font-semibold"></span>
                             </div>
                             <div class="flex items-center gap-x-2">
-                                <i class="fa-solid fa-arrow-down text-rose-400"></i>
+                                <i class="fa-solid fa-arrow-down text-rose-400" aria-hidden="true"></i>
                                 <span id="low-temp" class="font-semibold"></span>
                             </div>
                         </div>
                     </div>
 
                     <div class="flex-shrink-0 text-center md:text-right">
-                        <div id="current-icon" class="text-[120px] md:text-[140px] leading-none weather-icon mb-4"></div>
+                        <div id="current-icon" class="text-[120px] md:text-[140px] leading-none weather-icon mb-4" aria-hidden="true"></div>
                         <div class="text-sm text-blue-200">Feels like <span id="feels-like" class="font-semibold text-white"></span>°</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-10 pt-8 border-t border-white/20">
                     <div class="flex items-center gap-x-4">
-                        <i class="fa-solid fa-wind text-3xl text-blue-300"></i>
+                        <i class="fa-solid fa-wind text-3xl text-blue-300" aria-hidden="true"></i>
                         <div><div class="text-xs text-blue-200">WIND</div><div id="wind-speed" class="font-semibold text-lg"></div></div>
                     </div>
                     <div class="flex items-center gap-x-4">
-                        <i class="fa-solid fa-tint text-3xl text-blue-300"></i>
+                        <i class="fa-solid fa-tint text-3xl text-blue-300" aria-hidden="true"></i>
                         <div><div class="text-xs text-blue-200">HUMIDITY</div><div id="humidity" class="font-semibold text-lg"></div></div>
                     </div>
                     <div class="flex items-center gap-x-4">
-                        <i class="fa-solid fa-droplet text-3xl text-cyan-300"></i>
+                        <i class="fa-solid fa-droplet text-3xl text-cyan-300" aria-hidden="true"></i>
                         <div><div class="text-xs text-blue-200">DEW POINT</div><div id="dew-point" class="font-semibold text-lg"></div></div>
                     </div>
                     <div class="flex items-center gap-x-4">
-                        <i class="fa-solid fa-eye text-3xl text-blue-300"></i>
+                        <i class="fa-solid fa-eye text-3xl text-blue-300" aria-hidden="true"></i>
                         <div><div class="text-xs text-blue-200">VISIBILITY</div><div id="visibility" class="font-semibold text-lg"></div></div>
                     </div>
                     <div class="flex items-center gap-x-4">
-                        <i class="fa-solid fa-sun text-3xl text-amber-300"></i>
+                        <i class="fa-solid fa-sun text-3xl text-amber-300" aria-hidden="true"></i>
                         <div><div class="text-xs text-blue-200">UV INDEX</div><div id="uv-index" class="font-semibold text-lg"></div></div>
                     </div>
                     <div class="flex items-center gap-x-4">
-                        <i class="fa-solid fa-lungs text-3xl text-emerald-300"></i>
+                        <i class="fa-solid fa-lungs text-3xl text-emerald-300" aria-hidden="true"></i>
                         <div><div class="text-xs text-blue-200">AIR QUALITY</div><div id="air-quality" class="font-semibold text-lg"></div></div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Hourly Forecast -->
-        <div class="mb-8">
+        <section class="mb-8" aria-labelledby="hourly-heading">
             <div class="flex items-center justify-between mb-4 px-1">
-                <div class="section-title flex items-center gap-x-3">
-                    <i class="fa-solid fa-clock text-blue-400"></i>
+                <div class="section-title flex items-center gap-x-3" id="hourly-heading">
+                    <i class="fa-solid fa-clock text-blue-400" aria-hidden="true"></i>
                     <span>Hourly Forecast</span>
                 </div>
-                <button id="hourly-expand-btn" class="text-xs text-blue-400 hover:text-blue-300 transition-colors">Show 48 hours</button>
+                <button id="hourly-expand-btn" type="button" class="text-xs text-blue-400 hover:text-blue-300 transition-colors">Show 48 hours</button>
             </div>
-            <div id="hourly-error" class="section-error hidden rounded-2xl p-4 text-sm text-rose-200 mb-2"></div>
+            <div id="hourly-error" class="section-error hidden rounded-2xl p-4 text-sm text-rose-200 mb-2" role="alert"></div>
             <div id="hourly-forecast" class="daily-forecast-scroll scrollbar-hide"></div>
-        </div>
+        </section>
 
         <!-- 7-Day Forecast -->
-        <div class="mb-8">
+        <section class="mb-8" aria-labelledby="daily-heading">
             <div class="flex items-center justify-between mb-4 px-1">
-                <div class="section-title flex items-center gap-x-3">
-                    <i class="fa-solid fa-calendar text-blue-400"></i>
+                <div class="section-title flex items-center gap-x-3" id="daily-heading">
+                    <i class="fa-solid fa-calendar text-blue-400" aria-hidden="true"></i>
                     <span>7-Day Forecast</span>
                 </div>
             </div>
             <div id="daily-forecast" class="daily-forecast-scroll scrollbar-hide"></div>
-        </div>
+        </section>
 
         <!-- Live Radar -->
-        <div class="mb-8">
+        <section class="mb-8" aria-labelledby="radar-heading">
             <div class="flex items-center justify-between mb-4 px-1">
-                <div class="section-title flex items-center gap-x-3">
-                    <i class="fa-solid fa-satellite text-blue-400"></i>
+                <div class="section-title flex items-center gap-x-3" id="radar-heading">
+                    <i class="fa-solid fa-satellite text-blue-400" aria-hidden="true"></i>
                     <span>Live Radar</span>
                 </div>
-                <div class="text-xs text-zinc-400">Real-time <span class="hidden sm:inline">precipitation</span> &nbsp;·&nbsp; Updated <span id="last-updated">--:--</span> &nbsp;<span id="refresh-indicator" class="hidden text-blue-400"><i class="fa-solid fa-arrows-rotate fa-spin"></i></span></div>
+                <div class="text-xs text-zinc-400">Real-time <span class="hidden sm:inline">precipitation</span> &nbsp;·&nbsp; Updated <span id="last-updated">--:--</span> &nbsp;<span id="refresh-indicator" class="hidden text-blue-400"><i class="fa-solid fa-arrows-rotate fa-spin" aria-hidden="true"></i></span></div>
             </div>
             
-            <div id="radar-error" class="section-error hidden rounded-2xl p-4 text-sm text-rose-200 mb-2"></div>
+            <div id="radar-error" class="section-error hidden rounded-2xl p-4 text-sm text-rose-200 mb-2" role="alert"></div>
             <div class="radar-container glass rounded-3xl overflow-hidden border border-white/10">
-                <div id="radar-map" style="height: 480px; width: 100%;"></div>
+                <div id="radar-map" style="height: 480px; width: 100%;" role="img" aria-label="Precipitation radar map"></div>
                 <div class="radar-controls">
-                    <button id="radar-play-btn" title="Play/Pause">
-                        <i class="fa-solid fa-play text-xs"></i>
+                    <button id="radar-play-btn" type="button" title="Play/Pause" aria-label="Play radar loop">
+                        <i class="fa-solid fa-play text-xs" aria-hidden="true"></i>
                     </button>
-                    <button id="radar-now-btn" class="radar-mini-btn" title="Jump to latest observed frame">Now</button>
-                    <button id="radar-zoom-in-btn" class="radar-mini-btn" title="Zoom in"><i class="fa-solid fa-plus text-[10px]"></i></button>
-                    <button id="radar-zoom-out-btn" class="radar-mini-btn" title="Zoom out"><i class="fa-solid fa-minus text-[10px]"></i></button>
-                    <button id="radar-zoom-local-btn" class="radar-mini-btn" title="Zoom to local detail">Local</button>
+                    <button id="radar-now-btn" type="button" class="radar-mini-btn" title="Jump to latest observed frame">Now</button>
+                    <button id="radar-zoom-in-btn" type="button" class="radar-mini-btn" title="Zoom in" aria-label="Zoom in"><i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i></button>
+                    <button id="radar-zoom-out-btn" type="button" class="radar-mini-btn" title="Zoom out" aria-label="Zoom out"><i class="fa-solid fa-minus text-[10px]" aria-hidden="true"></i></button>
+                    <button id="radar-zoom-local-btn" type="button" class="radar-mini-btn" title="Zoom to local detail">Local</button>
+                    <label class="sr-only" for="radar-loop">Radar loop mode</label>
                     <select id="radar-loop" class="radar-select" title="Loop mode">
                         <option value="all">All</option>
                         <option value="past">Past</option>
                         <option value="forecast" hidden>Forecast</option>
                     </select>
+                    <label class="sr-only" for="radar-speed">Radar playback speed</label>
                     <select id="radar-speed" class="radar-select" title="Playback speed">
                         <option value="1200">0.5x</option>
                         <option value="900">0.75x</option>
@@ -248,26 +259,27 @@
                         <option value="250">2x</option>
                         <option value="150">3x</option>
                     </select>
-                    <input id="radar-slider" type="range" min="0" max="0" value="0">
+                    <label class="sr-only" for="radar-slider">Radar frame</label>
+                    <input id="radar-slider" type="range" min="0" max="0" value="0" aria-valuetext="Radar frame">
                     <span id="radar-time-label">Loading...</span>
                 </div>
                 <div class="px-4 pb-3 bg-zinc-900/30 text-xs text-zinc-500 flex items-center justify-between flex-wrap gap-2">
                     <div class="flex items-center gap-3 flex-wrap">
                         <span>RainViewer • <span class="radar-frame-past">&#9632; Past</span><span id="radar-forecast-legend" hidden> &nbsp;<span class="radar-frame-forecast">&#9632; Forecast</span></span></span>
-                        <button id="radar-lightning-btn" class="radar-mini-btn flex items-center gap-1" title="Toggle live lightning strikes">
-                            <i class="fa-solid fa-bolt text-amber-300"></i> Lightning
+                        <button id="radar-lightning-btn" type="button" class="radar-mini-btn flex items-center gap-1" title="Toggle live lightning strikes" aria-pressed="false">
+                            <i class="fa-solid fa-bolt text-amber-300" aria-hidden="true"></i> Lightning
                         </button>
-                        <span id="lightning-status" class="text-zinc-600"></span>
+                        <span id="lightning-status" class="text-zinc-600" aria-live="polite"></span>
                     </div>
                     <div id="radar-frame-count" class="text-zinc-600"></div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="mb-8 glass rounded-3xl border border-white/10 p-5 sm:p-6">
+        <section class="mb-8 glass rounded-3xl border border-white/10 p-5 sm:p-6" aria-labelledby="sun-heading">
             <div class="flex items-center justify-between mb-4">
-                <div class="section-title flex items-center gap-x-3">
-                    <i class="fa-solid fa-sun text-amber-300"></i>
+                <div class="section-title flex items-center gap-x-3" id="sun-heading">
+                    <i class="fa-solid fa-sun text-amber-300" aria-hidden="true"></i>
                     <span>Sun & Daylight</span>
                 </div>
                 <div id="daylight-remaining" class="text-xs text-zinc-400">--</div>
@@ -296,23 +308,22 @@
             <div class="daylight-track">
                 <div id="daylight-progress" class="daylight-progress"></div>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <!-- Daily Forecast Detail Modal -->
-    <div id="forecast-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-4">
+    <div id="forecast-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] hidden flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-date" aria-hidden="true">
         <div class="glass rounded-3xl border border-white/10 p-6 max-w-md w-full max-h-[80vh] overflow-y-auto" id="forecast-modal-card">
             <div class="flex items-center justify-between mb-4">
                 <h3 id="modal-date" class="text-lg font-semibold text-white"></h3>
-                <button id="forecast-modal-close" type="button" class="text-zinc-400 hover:text-white">
-                    <i class="fa-solid fa-times"></i>
+                <button id="forecast-modal-close" type="button" class="text-zinc-400 hover:text-white" aria-label="Close forecast details">
+                    <i class="fa-solid fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <div id="modal-content" class="space-y-4 text-sm text-zinc-200"></div>
         </div>
     </div>
 
-    <script src="./vendor/leaflet/leaflet.js"></script>
     <script type="module" src="./js/app.js"></script>
 </body>
 </html>

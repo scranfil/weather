@@ -44,6 +44,9 @@ export function showToast(message, type = 'info', duration = 2200) {
     toastContainer = document.createElement('div');
     toastContainer.id = 'toast-container';
     toastContainer.className = 'fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-[min(90vw,360px)] pointer-events-none';
+    toastContainer.setAttribute('role', 'status');
+    toastContainer.setAttribute('aria-live', 'polite');
+    toastContainer.setAttribute('aria-relevant', 'additions');
     document.body.appendChild(toastContainer);
   }
 
@@ -68,6 +71,42 @@ export function showToast(message, type = 'info', duration = 2200) {
 
 export function setOfflineState(isOffline) {
   document.getElementById('offline-banner')?.classList.toggle('hidden', !isOffline);
+  updateFreshnessBadge();
+}
+
+export function updateFreshnessBadge() {
+  const badge = document.getElementById('freshness-badge');
+  const label = document.getElementById('freshness-badge-label');
+  const dot = document.getElementById('freshness-badge-dot');
+  if (!badge || !label) return;
+
+  const offline = !navigator.onLine
+    || !document.getElementById('offline-banner')?.classList.contains('hidden');
+  const stale = state.lastWeatherFetchAt
+    && (Date.now() - state.lastWeatherFetchAt) >= STALE_DATA_MS;
+
+  badge.classList.remove('hidden');
+  if (offline) {
+    label.textContent = 'Offline';
+    if (dot) {
+      dot.classList.remove('bg-emerald-400', 'animate-pulse', 'bg-amber-400');
+      dot.classList.add('bg-zinc-400');
+    }
+    return;
+  }
+  if (stale) {
+    label.textContent = 'Stale';
+    if (dot) {
+      dot.classList.remove('bg-emerald-400', 'animate-pulse', 'bg-zinc-400');
+      dot.classList.add('bg-amber-400');
+    }
+    return;
+  }
+  label.textContent = 'Live';
+  if (dot) {
+    dot.classList.remove('bg-amber-400', 'bg-zinc-400');
+    dot.classList.add('bg-emerald-400', 'animate-pulse');
+  }
 }
 
 export function updateStaleBanner() {
@@ -75,16 +114,19 @@ export function updateStaleBanner() {
   const text = document.getElementById('stale-banner-text');
   if (!el || !state.lastWeatherFetchAt) {
     el?.classList.add('hidden');
+    updateFreshnessBadge();
     return;
   }
   const age = Date.now() - state.lastWeatherFetchAt;
   if (age < STALE_DATA_MS) {
     el.classList.add('hidden');
+    updateFreshnessBadge();
     return;
   }
   const when = new Date(state.lastWeatherFetchAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   text.textContent = `Showing data from ${when} — pull to refresh or tap the refresh button.`;
   el.classList.remove('hidden');
+  updateFreshnessBadge();
 }
 
 export function updateUnitToggleButton() {
@@ -375,10 +417,21 @@ function labeledStat(label, value) {
   return div;
 }
 
+let forecastModalReturnFocus = null;
+
+function formatModalTemp(tempF) {
+  if (!Number.isFinite(Number(tempF))) return '--';
+  return formatTempLabel(Number(tempF));
+}
+
 export function showForecastDetails(dayPeriod, nightPeriod) {
   const modal = document.getElementById('forecast-modal');
   const modalDate = document.getElementById('modal-date');
   const modalContent = document.getElementById('modal-content');
+  const closeBtn = document.getElementById('forecast-modal-close');
+  if (!modal || !modalDate || !modalContent) return;
+
+  forecastModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   modalDate.textContent = formatDate(dayPeriod.startTime);
 
   const dayDetails = dayPeriod.detailedForecast || dayPeriod.shortForecast || 'No details available.';
@@ -400,7 +453,7 @@ export function showForecastDetails(dayPeriod, nightPeriod) {
   const dayGrid = document.createElement('div');
   dayGrid.className = 'grid grid-cols-2 gap-2 text-xs';
   dayGrid.append(
-    labeledStat('High:', `${dayPeriod.temperature || '--'}°`),
+    labeledStat('High:', formatModalTemp(dayPeriod.temperature)),
     labeledStat('Precip:', `${dayPrecip}%`),
     labeledStat('Wind:', dayWind)
   );
@@ -416,17 +469,54 @@ export function showForecastDetails(dayPeriod, nightPeriod) {
   const nightGrid = document.createElement('div');
   nightGrid.className = 'grid grid-cols-2 gap-2 text-xs';
   nightGrid.append(
-    labeledStat('Low:', `${nightPeriod.temperature || '--'}°`),
+    labeledStat('Low:', formatModalTemp(nightPeriod.temperature)),
     labeledStat('Precip:', `${nightPrecip}%`),
     labeledStat('Wind:', nightWind)
   );
   nightSection.append(nightTitle, nightText, nightGrid);
   modalContent.append(daySection, nightSection);
   modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  (closeBtn || modal.querySelector('button'))?.focus();
 }
 
 export function closeForecastModal() {
-  document.getElementById('forecast-modal')?.classList.add('hidden');
+  const modal = document.getElementById('forecast-modal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  if (forecastModalReturnFocus?.focus) {
+    forecastModalReturnFocus.focus();
+  }
+  forecastModalReturnFocus = null;
+}
+
+export function bindForecastModalA11y() {
+  const modal = document.getElementById('forecast-modal');
+  const card = document.getElementById('forecast-modal-card');
+  if (!modal) return;
+
+  document.addEventListener('keydown', (event) => {
+    if (modal.classList.contains('hidden')) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeForecastModal();
+      return;
+    }
+    if (event.key !== 'Tab' || !card) return;
+    const focusable = [...card.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+      .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
 }
 
 export function updateRightNowInsight(ctx = {}) {
@@ -511,7 +601,7 @@ export function updateRightNowInsight(ctx = {}) {
   textEl.textContent = lines.slice(0, 2).join(' ');
 }
 
-export function updateExtrasFromOpenMeteo(openMeteoData, currentTempF) {
+export function updateExtrasFromOpenMeteo(openMeteoData, _currentTempF) {
   const uvEl = document.getElementById('uv-index');
   const dewEl = document.getElementById('dew-point');
   const aqiEl = document.getElementById('air-quality');

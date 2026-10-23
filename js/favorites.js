@@ -6,6 +6,36 @@ import { getPointsData, pickBestObservationStation } from './nws.js';
 import { state } from './state.js';
 import { showToast } from './ui.js';
 
+const FAVORITE_REFRESH_CONCURRENCY = 3;
+
+function isValidFavorite(entry) {
+  return entry
+    && typeof entry === 'object'
+    && typeof entry.name === 'string'
+    && Number.isFinite(Number(entry.lat))
+    && Number.isFinite(Number(entry.lon));
+}
+
+function normalizeFavorite(entry) {
+  return {
+    name: String(entry.name),
+    lat: Number(entry.lat),
+    lon: Number(entry.lon),
+    isHome: Boolean(entry.isHome),
+    temp: Number.isFinite(Number(entry.temp)) ? Number(entry.temp) : (entry.temp ?? null),
+    tempUpdatedAt: Number.isFinite(Number(entry.tempUpdatedAt)) ? Number(entry.tempUpdatedAt) : undefined
+  };
+}
+
+function defaultFavorites() {
+  return [{
+    name: FALLBACK_LOCATION.name,
+    lat: FALLBACK_LOCATION.lat,
+    lon: FALLBACK_LOCATION.lon,
+    isHome: true
+  }];
+}
+
 export function homeOrFallbackLocation() {
   const home = state.favorites.find(f => f.isHome && Number.isFinite(Number(f.lat)) && Number.isFinite(Number(f.lon)));
   if (!home) return FALLBACK_LOCATION;
@@ -14,21 +44,44 @@ export function homeOrFallbackLocation() {
 
 export function loadFavorites() {
   const saved = localStorage.getItem('weatherFavorites');
-  if (saved) {
-    state.favorites = JSON.parse(saved);
-  } else {
-    state.favorites = [{
-      name: FALLBACK_LOCATION.name,
-      lat: FALLBACK_LOCATION.lat,
-      lon: FALLBACK_LOCATION.lon,
-      isHome: true
-    }];
+  if (!saved) {
+    state.favorites = defaultFavorites();
+    saveFavorites();
+    return;
+  }
+  try {
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) throw new Error('invalid favorites');
+    const normalized = parsed.filter(isValidFavorite).map(normalizeFavorite);
+    state.favorites = normalized.length ? normalized : defaultFavorites();
+    if (normalized.length !== parsed.length) saveFavorites();
+  } catch {
+    state.favorites = defaultFavorites();
     saveFavorites();
   }
 }
 
 export function saveFavorites() {
-  localStorage.setItem('weatherFavorites', JSON.stringify(state.favorites));
+  try {
+    localStorage.setItem('weatherFavorites', JSON.stringify(state.favorites));
+  } catch {
+    // ignore quota failures
+  }
+}
+
+async function mapWithConcurrency(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function run() {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await worker(items[index], index);
+    }
+  }
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, () => run());
+  await Promise.all(runners);
+  return results;
 }
 
 export function renderFavorites() {
@@ -42,11 +95,14 @@ export function renderFavorites() {
     const index = state.favorites.indexOf(fav);
     const pill = document.createElement('div');
     pill.className = `favorite-pill flex-shrink-0 snap-start flex items-center gap-x-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 px-4 py-2 rounded-3xl text-sm cursor-pointer${fav.isHome ? ' is-home' : ''}`;
+    pill.setAttribute('role', 'button');
+    pill.tabIndex = 0;
 
     const left = document.createElement('div');
     left.className = 'flex items-center gap-x-2';
     const iconEl = document.createElement('i');
     iconEl.className = fav.isHome ? 'fa-solid fa-home text-emerald-400' : 'fa-solid fa-map-marker-alt text-blue-400';
+    iconEl.setAttribute('aria-hidden', 'true');
     const nameWrap = document.createElement('div');
     const nameEl = document.createElement('div');
     nameEl.className = 'font-medium text-white';
@@ -63,29 +119,50 @@ export function renderFavorites() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'ml-1 w-5 h-5 flex items-center justify-center text-zinc-500 hover:text-red-400 transition-colors';
-    btn.innerHTML = '<i class="fa-solid fa-times text-xs"></i>';
+    btn.setAttribute('aria-label', `Remove ${fav.name}`);
+    const timesIcon = document.createElement('i');
+    timesIcon.className = 'fa-solid fa-times text-xs';
+    timesIcon.setAttribute('aria-hidden', 'true');
+    btn.appendChild(timesIcon);
     btn.onclick = (event) => { event.stopImmediatePropagation(); removeFavorite(index); };
     pill.append(left, btn);
-    pill.onclick = () => {
+    const openFavorite = () => {
       document.dispatchEvent(new CustomEvent('weather:open-location', {
         detail: { lat: fav.lat, lon: fav.lon, name: fav.name }
       }));
     };
+    pill.onclick = openFavorite;
+    pill.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openFavorite();
+      }
+    });
     container.appendChild(pill);
   });
 
   const addBtn = document.createElement('div');
   addBtn.className = 'flex-shrink-0 snap-start flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-white/10 px-4 py-2 rounded-3xl text-sm cursor-pointer text-blue-400';
+  addBtn.setAttribute('role', 'button');
+  addBtn.tabIndex = 0;
+  addBtn.setAttribute('aria-label', 'Add current location to favorites');
   const addInner = document.createElement('div');
   addInner.className = 'flex items-center gap-x-2';
   const plusIcon = document.createElement('i');
   plusIcon.className = 'fa-solid fa-plus';
+  plusIcon.setAttribute('aria-hidden', 'true');
   const addText = document.createElement('span');
   addText.className = 'font-medium';
   addText.textContent = 'Add';
   addInner.append(plusIcon, addText);
   addBtn.appendChild(addInner);
   addBtn.onclick = () => addCurrentToFavorites();
+  addBtn.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      addCurrentToFavorites();
+    }
+  });
   container.appendChild(addBtn);
 }
 
@@ -98,6 +175,43 @@ export function noteFavoriteObservation(lat, lon, tempF) {
   saveFavorites();
 }
 
+async function refreshOneFavoriteTemp(fav, force) {
+  if (!force && fav.tempUpdatedAt && (Date.now() - fav.tempUpdatedAt) < FAVORITES_STALE_MS) return;
+  try {
+    const pointsData = await getPointsData(fav.lat, fav.lon);
+    const stationUrl = pointsData.properties.observationStations;
+    if (stationUrl) {
+      const stationsRes = await fetchWithTimeout(stationUrl, {}, 8000);
+      if (stationsRes.ok) {
+        const stationsData = await stationsRes.json();
+        const obsResult = await pickBestObservationStation(stationsData, fav.lat, fav.lon);
+        const tempC = obsResult?.props?.temperature?.value;
+        if (Number.isFinite(tempC)) {
+          fav.temp = cToF(tempC);
+          fav.tempUpdatedAt = Date.now();
+          return;
+        }
+      }
+    }
+    const hourlyUrl = pointsData.properties.forecastHourly;
+    if (hourlyUrl) {
+      const hourlyRes = await fetchWithTimeout(hourlyUrl, {}, 8000);
+      if (hourlyRes.ok) {
+        const hourlyData = await hourlyRes.json();
+        const nowPeriod = getCurrentHourlyPeriod(hourlyData.properties?.periods || []);
+        if (nowPeriod && Number.isFinite(nowPeriod.temperature)) {
+          fav.temp = nowPeriod.temperature;
+          fav.tempUpdatedAt = Date.now();
+          return;
+        }
+      }
+    }
+    fav.temp = null;
+  } catch {
+    fav.temp = null;
+  }
+}
+
 export async function refreshFavoritesTemps(options = {}) {
   const { force = false, silent = false } = options;
   if (!state.favorites?.length) return;
@@ -106,44 +220,10 @@ export async function refreshFavoritesTemps(options = {}) {
     return;
   }
 
-  await Promise.all(state.favorites.map(async (fav) => {
-    if (!force && fav.tempUpdatedAt && (Date.now() - fav.tempUpdatedAt) < FAVORITES_STALE_MS) return;
-    try {
-      const pointsData = await getPointsData(fav.lat, fav.lon);
-      const stationUrl = pointsData.properties.observationStations;
-      if (stationUrl) {
-        const stationsRes = await fetchWithTimeout(stationUrl, {}, 8000);
-        if (stationsRes.ok) {
-          const stationsData = await stationsRes.json();
-          const obsResult = await pickBestObservationStation(stationsData, fav.lat, fav.lon);
-          const tempC = obsResult?.props?.temperature?.value;
-          if (Number.isFinite(tempC)) {
-            fav.temp = cToF(tempC);
-            fav.tempUpdatedAt = Date.now();
-            return;
-          }
-        }
-      }
-      const hourlyUrl = pointsData.properties.forecastHourly;
-      if (hourlyUrl) {
-        const hourlyRes = await fetchWithTimeout(hourlyUrl, {}, 8000);
-        if (hourlyRes.ok) {
-          const hourlyData = await hourlyRes.json();
-          const nowPeriod = getCurrentHourlyPeriod(hourlyData.properties?.periods || []);
-          if (nowPeriod && Number.isFinite(nowPeriod.temperature)) {
-            fav.temp = nowPeriod.temperature;
-            fav.tempUpdatedAt = Date.now();
-            return;
-          }
-        }
-      }
-      fav.temp = null;
-    } catch (error) {
-      fav.temp = null;
-    }
-  }));
+  await mapWithConcurrency(state.favorites, FAVORITE_REFRESH_CONCURRENCY, (fav) => refreshOneFavoriteTemp(fav, force));
 
   state.favoritesLastRefreshAt = Date.now();
+  saveFavorites();
   renderFavorites();
 }
 

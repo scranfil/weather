@@ -46,14 +46,61 @@ export function updateMainAlertStrip(alerts) {
   strip.classList.remove('hidden');
 }
 
-export async function requestNotificationPermission() {
+/** Sync state from an already-granted permission without prompting. */
+export function syncNotificationPermission() {
   if (!('Notification' in window)) return;
+  state.notificationsReady = Notification.permission === 'granted';
+  updateEnableAlertsButton();
+}
+
+export function updateEnableAlertsButton() {
+  const btn = document.getElementById('enable-alerts-btn');
+  if (!btn) return;
+  if (!('Notification' in window)) {
+    btn.classList.add('hidden');
+    return;
+  }
+  if (Notification.permission === 'granted' || state.notificationsReady) {
+    btn.classList.add('hidden');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    btn.classList.add('hidden');
+    return;
+  }
+  btn.classList.remove('hidden');
+}
+
+/** Prompt only after an explicit user action (e.g. Enable alerts). */
+export async function enableAlertNotifications() {
+  if (!('Notification' in window)) {
+    const { showToast } = await import('./ui.js');
+    showToast('Notifications are not supported in this browser.', 'warning');
+    return false;
+  }
   if (Notification.permission === 'granted') {
     state.notificationsReady = true;
-  } else if (Notification.permission !== 'denied') {
-    const perm = await Notification.requestPermission();
-    state.notificationsReady = perm === 'granted';
+    updateEnableAlertsButton();
+    return true;
   }
+  if (Notification.permission === 'denied') {
+    const { showToast } = await import('./ui.js');
+    showToast('Notifications are blocked in browser settings.', 'warning');
+    updateEnableAlertsButton();
+    return false;
+  }
+  const perm = await Notification.requestPermission();
+  state.notificationsReady = perm === 'granted';
+  updateEnableAlertsButton();
+  const { showToast } = await import('./ui.js');
+  if (state.notificationsReady) showToast('Weather alert notifications enabled', 'success');
+  else showToast('Notifications were not enabled.', 'info');
+  return state.notificationsReady;
+}
+
+/** @deprecated Use enableAlertNotifications after a user gesture. */
+export async function requestNotificationPermission() {
+  return enableAlertNotifications();
 }
 
 async function fireAlertNotification(eventName, headline) {
@@ -62,8 +109,8 @@ async function fireAlertNotification(eventName, headline) {
   const title = `⚠️ ${eventName}`;
   const options = {
     body: headline,
-    icon: 'icon.svg',
-    badge: 'icon.svg',
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
     tag: eventName,
     renotify: true
   };
@@ -99,6 +146,7 @@ export function updateAlerts(features) {
   }
 
   section.classList.remove('hidden');
+  updateEnableAlertsButton();
   visibleFeatures.slice(0, 3).forEach((feature, idx) => {
     const props = feature.properties || {};
     const severity = (props.severity || 'Unknown').toLowerCase();
@@ -136,7 +184,10 @@ export function updateAlerts(features) {
     dismissBtn.type = 'button';
     dismissBtn.className = 'text-zinc-400 hover:text-white transition-colors';
     dismissBtn.setAttribute('aria-label', `Dismiss ${eventName}`);
-    dismissBtn.innerHTML = '<i class="fa-solid fa-xmark text-xs"></i>';
+    const dismissIcon = document.createElement('i');
+    dismissIcon.className = 'fa-solid fa-xmark text-xs';
+    dismissIcon.setAttribute('aria-hidden', 'true');
+    dismissBtn.appendChild(dismissIcon);
     dismissBtn.addEventListener('click', (event) => {
       event.stopPropagation();
       dismissAlert(feature);
@@ -246,4 +297,6 @@ export function presentAlerts(features, requestId = null) {
 
   updateAlerts(visibleFeatures);
   updateAlertPolygons(visibleFeatures);
+  // Show the opt-in control whenever alerts are visible and permission is still default.
+  if (visibleFeatures.length) updateEnableAlertsButton();
 }

@@ -31,6 +31,46 @@ export function nwsProxyHeaders(clientAccept) {
   };
 }
 
+/** Resolve a /nws… request path to an api.weather.gov URL, or null if unsafe. */
+export function resolveNwsUpstreamUrl(requestUrl) {
+  const raw = typeof requestUrl === 'string' ? requestUrl : '';
+  const stripped = raw.startsWith('/nws') ? raw.slice('/nws'.length) : raw;
+  if (!stripped || stripped === '/') {
+    return new URL('/', NWS_ORIGIN);
+  }
+  if (!stripped.startsWith('/')) return null;
+
+  const qIndex = stripped.indexOf('?');
+  const pathPart = qIndex === -1 ? stripped : stripped.slice(0, qIndex);
+  const queryPart = qIndex === -1 ? '' : stripped.slice(qIndex);
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(pathPart);
+  } catch {
+    return null;
+  }
+
+  // Reject absolute URLs, protocol-relative hosts, path tricks, and embedded schemes.
+  if (
+    decodedPath.includes('\\')
+    || decodedPath.includes('://')
+    || decodedPath.startsWith('//')
+    || decodedPath.includes('//')
+    || /^\/[a-zA-Z][a-zA-Z0-9+.-]*:/.test(decodedPath)
+  ) {
+    return null;
+  }
+
+  let upstream;
+  try {
+    upstream = new URL(`${decodedPath}${queryPart}`, NWS_ORIGIN);
+  } catch {
+    return null;
+  }
+  if (upstream.origin !== NWS_ORIGIN) return null;
+  return upstream;
+}
+
 function fileForRequest(root, urlPath) {
   const decoded = decodeURIComponent(urlPath.split('?')[0]);
   const relative = decoded.replace(/^[/\\]+/, '');
@@ -51,8 +91,15 @@ function sendFile(res, filePath) {
 }
 
 async function proxyNws(req, res) {
-  const upstreamPath = req.url.slice('/nws'.length) || '/';
-  const upstream = new URL(upstreamPath, NWS_ORIGIN);
+  const upstream = resolveNwsUpstreamUrl(req.url);
+  if (!upstream) {
+    res.writeHead(400, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'x-weather-nws-proxy': '1'
+    });
+    res.end('Invalid proxy path');
+    return;
+  }
   const upstreamRes = await fetch(upstream, { headers: nwsProxyHeaders(req.headers.accept) });
   const body = Buffer.from(await upstreamRes.arrayBuffer());
   const headers = {
@@ -109,11 +156,11 @@ export function createAppServer(root = ROOT) {
         return;
       }
       sendFile(res, target);
-    } catch (error) {
+    } catch {
       if (!res.headersSent) {
         res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8', 'x-weather-nws-proxy': '1' });
       }
-      res.end(error?.message || 'Proxy failed');
+      res.end('Proxy failed');
     }
   });
 }

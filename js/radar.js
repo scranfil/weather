@@ -15,7 +15,8 @@ import { fetchWithTimeout } from './net.js';
 import { state } from './state.js';
 import { refreshMainCardCondition, updateRightNowInsight } from './ui.js';
 
-const L = globalThis.L;
+let L = globalThis.L;
+let leafletLoadPromise = null;
 
 let radarMap = null;
 let radarFrames = [];
@@ -113,7 +114,7 @@ function decodeBlitzortungMessage(data) {
   let c = d[0];
   let f = c;
   const g = [c];
-  let h = 256;
+  const h = 256;
   let o = h;
   for (let i = 1; i < d.length; i++) {
     let a = d.charCodeAt(i);
@@ -215,6 +216,14 @@ function ensureLightningFeed() {
   };
 }
 
+function stopLightningFeed() {
+  lightningFeedActive = false;
+  if (lightningSocket) {
+    try { lightningSocket.close(); } catch { /* ignore */ }
+    lightningSocket = null;
+  }
+}
+
 export function startPassiveLightningFeed() {
   lightningFeedActive = true;
   ensureLightningFeed();
@@ -223,16 +232,68 @@ export function startPassiveLightningFeed() {
 export function toggleLightningLayer() {
   lightningEnabled = !lightningEnabled;
   const btn = document.getElementById('radar-lightning-btn');
-  if (btn) btn.classList.toggle('bg-amber-500/20', lightningEnabled);
-  ensureLightningFeed();
-  if (lightningEnabled) renderLightningStrikes();
-  else if (lightningLayerGroup) lightningLayerGroup.clearLayers();
+  if (btn) {
+    btn.classList.toggle('bg-amber-500/20', lightningEnabled);
+    btn.setAttribute('aria-pressed', lightningEnabled ? 'true' : 'false');
+  }
+  if (lightningEnabled) {
+    startPassiveLightningFeed();
+    renderLightningStrikes();
+  } else {
+    stopLightningFeed();
+    if (lightningLayerGroup) lightningLayerGroup.clearLayers();
+  }
   const status = document.getElementById('lightning-status');
   if (status) status.textContent = lightningEnabled ? (state.lightningStrikes.length ? `${state.lightningStrikes.length} strikes` : 'Listening…') : '';
 }
 
+function loadStylesheet(href) {
+  if (document.querySelector(`link[href="${href}"]`)) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.onload = () => resolve();
+    link.onerror = () => reject(new Error(`Failed to load ${href}`));
+    document.head.appendChild(link);
+  });
+}
+
+function loadScript(src) {
+  if (document.querySelector(`script[src="${src}"]`)) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+/** Lazily load Leaflet CSS/JS on first radar use. */
+export async function ensureLeaflet() {
+  if (L || globalThis.L) {
+    L = globalThis.L;
+    return L;
+  }
+  if (!leafletLoadPromise) {
+    leafletLoadPromise = (async () => {
+      await loadStylesheet('./vendor/leaflet/leaflet.css');
+      await loadScript('./vendor/leaflet/leaflet.js');
+      L = globalThis.L;
+      if (!L) throw new Error('Map library failed to load');
+      return L;
+    })();
+  }
+  return leafletLoadPromise;
+}
+
 export function updateAlertPolygons(features) {
-  if (!radarMap || !L) return;
+  if (!radarMap || !(L || globalThis.L)) return;
+  L = L || globalThis.L;
   if (!alertPolygonLayer) {
     alertPolygonLayer = L.layerGroup().addTo(radarMap);
   }
@@ -384,6 +445,7 @@ export async function loadRadarFrames() {
 
 export async function updateRadarMap(lat, lon, options = {}) {
   const { resetZoom = false } = options;
+  await ensureLeaflet();
   if (!L) throw new Error('Map library failed to load');
   radarLastLat = lat;
   radarLastLon = lon;
@@ -484,15 +546,25 @@ function restartRadarPlaybackIfNeeded() {
   }, radarSpeedMs);
 }
 
+function setPlayButtonIcon(playing) {
+  const playBtn = document.getElementById('radar-play-btn');
+  if (!playBtn) return;
+  playBtn.replaceChildren();
+  const icon = document.createElement('i');
+  icon.className = playing ? 'fa-solid fa-pause text-xs' : 'fa-solid fa-play text-xs';
+  icon.setAttribute('aria-hidden', 'true');
+  playBtn.appendChild(icon);
+  playBtn.setAttribute('aria-label', playing ? 'Pause radar loop' : 'Play radar loop');
+}
+
 function toggleRadarPlay() {
   if (!radarFrames.length) return;
-  const playBtn = document.getElementById('radar-play-btn');
   if (radarPlayInterval) {
     clearInterval(radarPlayInterval);
     radarPlayInterval = null;
-    if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play text-xs"></i>';
+    setPlayButtonIcon(false);
   } else {
-    if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause text-xs"></i>';
+    setPlayButtonIcon(true);
     radarPlayInterval = setInterval(() => {
       advanceRadarFrame();
     }, radarSpeedMs);
@@ -503,8 +575,7 @@ export function resetLocationScopedUI() {
   if (radarPlayInterval) {
     clearInterval(radarPlayInterval);
     radarPlayInterval = null;
-    const playBtn = document.getElementById('radar-play-btn');
-    if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play text-xs"></i>';
+    setPlayButtonIcon(false);
   }
   state.lightningStrikes = [];
   if (lightningLayerGroup) lightningLayerGroup.clearLayers();
@@ -512,7 +583,7 @@ export function resetLocationScopedUI() {
   const alertsSection = document.getElementById('alerts-section');
   const alertsList = document.getElementById('alerts-list');
   if (alertsSection) alertsSection.classList.add('hidden');
-  if (alertsList) alertsList.innerHTML = '';
+  if (alertsList) alertsList.replaceChildren();
 }
 
 export function bindRadarControls() {
@@ -542,9 +613,10 @@ export function bindRadarControls() {
     if (radarPlayInterval) {
       clearInterval(radarPlayInterval);
       radarPlayInterval = null;
-      const playBtn = document.getElementById('radar-play-btn');
-      if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play text-xs"></i>';
+      setPlayButtonIcon(false);
     }
     showRadarFrame(parseInt(this.value, 10));
   });
+  const lightningBtn = document.getElementById('radar-lightning-btn');
+  if (lightningBtn) lightningBtn.setAttribute('aria-pressed', 'false');
 }

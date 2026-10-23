@@ -1,26 +1,32 @@
 {
   "name": "weather",
   "version": "1.0.0",
-  "description": "",
-  "main": "sw.js",
+  "description": "Installable weather PWA with NWS forecasts, radar, and alerts.",
+  "main": "server.mjs",
+  "type": "module",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs",
+    "lint": "eslint server.mjs sw.js js/**/*.js test/**/*.mjs",
     "build:css": "tailwindcss -c tailwind.config.cjs -i ./css/tailwind-input.css -o ./css/tailwind.css --minify"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/scranfil/weather.git"
   },
-  "keywords": [],
+  "keywords": [
+    "weather",
+    "pwa",
+    "nws"
+  ],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/scranfil/weather/issues"
   },
   "homepage": "https://github.com/scranfil/weather#readme",
   "devDependencies": {
+    "eslint": "^9.22.0",
     "tailwindcss": "^3.4.17"
   },
   "dependencies": {
