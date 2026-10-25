@@ -1,13 +1,18 @@
 {
+  "id": "./",
   "name": "Weather",
   "short_name": "Weather",
-  "description": "Live weather, forecasts, and radar in an installable app.",
+  "description": "Live weather, forecasts, and radar in an installable fullscreen app.",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#122033",
-  "theme_color": "#1e3a8a",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["weather", "utilities"],
   "icons": [
     {
       "src": "./icon-192.png",
@@ -33,5 +38,8 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }

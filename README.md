@@ -36,10 +36,13 @@ CARTO basemap keys in `js/config.js` are referer-locked (GitHub Pages vs localho
 
 ## PWA notes
 
+- Installable fullscreen app (`display: "fullscreen"` with standalone fallback)
 - Manifest icons: `icon-192.png`, `icon-512.png`, plus `icon.svg`
+- Use **Install** (or iOS Share → Add to Home Screen) to launch without browser chrome
 - Alert notifications are opt-in via **Enable notifications** when alerts are present
 - Lightning WebSocket starts only when the Lightning control is turned on
 - Leaflet CSS/JS load on first radar use
+- Safe-area insets keep the nav clear of notches in fullscreen / home-screen mode
 
 ## License
 
