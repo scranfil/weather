@@ -35,7 +35,8 @@ import {
   updateRightNowInsight,
   updateStaleBanner,
   updateSunCard,
-  updateUnitToggleButton
+  updateUnitToggleButton,
+  updateWeatherMeta
 } from './ui.js';
 
 export function renderWeatherView(payload) {
@@ -80,6 +81,7 @@ export function cacheWeatherPayload(payload) {
     // ignore quota failures
   }
   updateStaleBanner();
+  updateWeatherMeta(payload.locationName || state.currentLocationName, state.lastWeatherFetchAt);
   syncLocationToServiceWorker(payload.lat, payload.lon);
 }
 
@@ -92,6 +94,7 @@ export function applyCachedWeatherUI() {
   if (!payload) return;
   primeRadarForLocation(payload.lat, payload.lon);
   renderWeatherView(payload);
+  updateWeatherMeta(payload.locationName || state.currentLocationName, state.lastWeatherFetchAt);
   updateStaleBanner();
 }
 
@@ -255,8 +258,6 @@ export async function fetchWeather(lat, lon, locationName = null, options = {}) 
     payload.insightContext.currentTempF = currentTempF;
     const card = document.getElementById('current-weather');
     if (card) card.style.opacity = '1';
-    const lastEl = document.getElementById('last-updated');
-    if (lastEl) lastEl.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
     cacheWeatherPayload(payload);
     noteFavoriteObservation(lat, lon, currentTempF);

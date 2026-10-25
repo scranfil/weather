@@ -230,7 +230,10 @@
                     <i class="fa-solid fa-satellite text-blue-400" aria-hidden="true"></i>
                     <span>Live Radar</span>
                 </div>
-                <div class="text-xs text-zinc-400">Real-time <span class="hidden sm:inline">precipitation</span> &nbsp;·&nbsp; Updated <span id="last-updated">--:--</span> &nbsp;<span id="refresh-indicator" class="hidden text-blue-400"><i class="fa-solid fa-arrows-rotate fa-spin" aria-hidden="true"></i></span></div>
+                <div class="text-xs text-zinc-400 text-right">
+                    <span id="radar-location" class="text-zinc-300"></span><span id="radar-location-sep" class="hidden"> &nbsp;·&nbsp; </span>Updated <span id="last-updated">--:--</span>
+                    &nbsp;<span id="refresh-indicator" class="hidden text-blue-400"><i class="fa-solid fa-arrows-rotate fa-spin" aria-hidden="true"></i></span>
+                </div>
             </div>
             
             <div id="radar-error" class="section-error hidden rounded-2xl p-4 text-sm text-rose-200 mb-2" role="alert"></div>
@@ -309,6 +312,17 @@
                 <div id="daylight-progress" class="daylight-progress"></div>
             </div>
         </section>
+
+        <footer class="page-meta px-1 pb-2 text-xs text-zinc-500 flex flex-wrap items-center justify-between gap-2" aria-label="Weather update details">
+            <div class="flex items-center gap-x-2 min-w-0">
+                <i class="fa-solid fa-location-dot text-blue-400/80" aria-hidden="true"></i>
+                <span id="footer-location" class="text-zinc-300 truncate">--</span>
+            </div>
+            <div class="flex items-center gap-x-2 text-zinc-500">
+                <span>Weather updated</span>
+                <time id="footer-updated" datetime="">--:--</time>
+            </div>
+        </footer>
     </main>
 
     <!-- Daily Forecast Detail Modal -->
