@@ -1,6 +1,6 @@
 import { APP_USER_AGENT } from './js/config.js';
 
-const CACHE_NAME = 'weather-pwa-v11';
+const CACHE_NAME = 'weather-pwa-v12';
 const APP_SHELL = [
   './',
   './index.html',
