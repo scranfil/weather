@@ -51,11 +51,14 @@ test('forecast-style temps respect the unit toggle', () => {
   assert.equal(formatTempLabel(NaN), '--');
 });
 
-test('manifest lists png install icons', () => {
+test('manifest lists png install icons and launches fullscreen', () => {
   const manifest = JSON.parse(readFileSync(path.join(root, '../manifest.webmanifest'), 'utf8'));
   const pngs = manifest.icons.filter(icon => icon.type === 'image/png');
   assert.ok(pngs.some(icon => icon.sizes === '192x192'));
   assert.ok(pngs.some(icon => icon.sizes === '512x512'));
+  assert.equal(manifest.display, 'fullscreen');
+  assert.ok(Array.isArray(manifest.display_override));
+  assert.equal(manifest.display_override[0], 'fullscreen');
 });
 
 test('app shell no longer precaches unused fontawesome webfonts', () => {

@@ -13,7 +13,7 @@ export async function registerBackgroundAlertSync() {
     if ('periodicSync' in reg) {
       await reg.periodicSync.register('weather-alerts', { minInterval: 15 * 60 * 1000 });
     }
-  } catch (error) {
+  } catch {
     // unsupported
   }
 }
@@ -65,15 +65,19 @@ export async function shareApp() {
   try {
     await navigator.clipboard.writeText(text);
     showToast('Copied — paste into a text message to share.', 'success', 2800);
-  } catch (error) {
+  } catch {
     showToast(text, 'info', 5000);
   }
 }
 
 let deferredInstallPrompt = null;
 
-function isRunningStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+/** True when launched as an installed PWA (fullscreen, standalone, or iOS home screen). */
+export function isInstalledApp() {
+  return window.matchMedia('(display-mode: fullscreen)').matches
+    || window.matchMedia('(display-mode: standalone)').matches
+    || window.matchMedia('(display-mode: minimal-ui)').matches
+    || window.navigator.standalone === true;
 }
 
 function showInstallButton() {
@@ -92,23 +96,40 @@ function hideInstallButton() {
   }
 }
 
+function markInstalledShell() {
+  document.documentElement.classList.add('pwa-installed');
+  document.body?.classList.add('pwa-installed');
+}
+
 export function bindInstallPrompt() {
   const installBtn = document.getElementById('install-btn');
-  if (!isRunningStandalone()) {
+  if (isInstalledApp()) {
+    markInstalledShell();
+    hideInstallButton();
+  } else {
     const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     if (isiOS && isSafari) showInstallButton();
   }
 
+  window.matchMedia('(display-mode: fullscreen)').addEventListener('change', (event) => {
+    if (event.matches) markInstalledShell();
+  });
+  window.matchMedia('(display-mode: standalone)').addEventListener('change', (event) => {
+    if (event.matches) markInstalledShell();
+  });
+
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    showInstallButton();
+    if (!isInstalledApp()) showInstallButton();
   });
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     hideInstallButton();
+    markInstalledShell();
+    showToast('Weather installed — opens fullscreen from your home screen.', 'success', 2800);
   });
 
   installBtn?.addEventListener('click', async () => {
@@ -120,8 +141,8 @@ export function bindInstallPrompt() {
       return;
     }
     const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (isiOS && !isRunningStandalone()) {
-      showToast('Tap Share, then Add to Home Screen', 'info', 2600);
+    if (isiOS && !isInstalledApp()) {
+      showToast('Tap Share, then Add to Home Screen for fullscreen', 'info', 2800);
     }
   });
 }

@@ -1,5 +1,41 @@
-body { font-family: 'Inter', system-ui, sans-serif; }
+html, body {
+            min-height: 100%;
+            min-height: 100dvh;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            padding-left: env(safe-area-inset-left, 0px);
+            padding-right: env(safe-area-inset-right, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
         .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; }
+
+        .app-nav {
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+
+        .app-content {
+            padding-top: calc(7rem + env(safe-area-inset-top, 0px));
+        }
+
+        @media (min-width: 640px) {
+            .app-content {
+                padding-top: calc(5rem + env(safe-area-inset-top, 0px));
+            }
+        }
+
+        .offline-banner,
+        .stale-banner {
+            top: calc(4rem + env(safe-area-inset-top, 0px));
+        }
+
+        @media (display-mode: fullscreen), (display-mode: standalone) {
+            body.pwa-installed {
+                overscroll-behavior-y: none;
+            }
+        }
 
         .sr-only {
             position: absolute;
