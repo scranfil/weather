@@ -134,6 +134,38 @@ export function updateUnitToggleButton() {
   if (btn) btn.textContent = state.useCelsius ? '°C' : '°F';
 }
 
+/** Keep radar header + page footer in sync with the active weather location and fetch time. */
+export function updateWeatherMeta(locationName = state.currentLocationName, updatedAt = state.lastWeatherFetchAt) {
+  const name = (locationName && locationName !== 'Getting your location...')
+    ? locationName
+    : (state.currentLocationName && state.currentLocationName !== 'Getting your location...'
+      ? state.currentLocationName
+      : '');
+
+  const footerLocation = document.getElementById('footer-location');
+  if (footerLocation) footerLocation.textContent = name || '--';
+
+  const radarLocation = document.getElementById('radar-location');
+  const radarSep = document.getElementById('radar-location-sep');
+  if (radarLocation) {
+    radarLocation.textContent = name;
+    radarSep?.classList.toggle('hidden', !name);
+  }
+
+  const whenMs = updatedAt || state.lastWeatherFetchAt || Date.now();
+  const when = new Date(whenMs);
+  const timeLabel = when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  const lastEl = document.getElementById('last-updated');
+  if (lastEl) lastEl.textContent = timeLabel;
+
+  const footerUpdated = document.getElementById('footer-updated');
+  if (footerUpdated) {
+    footerUpdated.textContent = timeLabel;
+    footerUpdated.dateTime = when.toISOString();
+  }
+}
+
 export function setSectionError(id, message) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -223,6 +255,7 @@ export function updateCurrentWeather(observation, forecastPeriod, locationName, 
   document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric'
   });
+  updateWeatherMeta(locationName, state.lastWeatherFetchAt);
 
   const currentTempC = observation.temperature?.value;
   let currentTempF = null;
