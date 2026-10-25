@@ -2,15 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather</title>
     
-    <meta name="theme-color" content="#09090b">
-    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#1e3a8a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Weather">
-    <meta name="application-name" content="Weather">
     
     <link rel="manifest" href="./manifest.webmanifest">
     <meta name="mobile-web-app-capable" content="yes">
@@ -23,16 +21,16 @@
     <link rel="stylesheet" href="./vendor/fonts/fonts.css">
     <link rel="stylesheet" href="./css/app.css">
 </head>
-<body class="bg-zinc-950 text-white app-shell">
-    <div id="offline-banner" class="offline-banner hidden fixed left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100" role="status" aria-live="polite">
+<body class="bg-zinc-950 text-white">
+    <div id="offline-banner" class="offline-banner hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100" role="status" aria-live="polite">
         <i class="fa-solid fa-wifi-slash mr-2" aria-hidden="true"></i>You're offline — showing last saved weather when available.
     </div>
-    <div id="stale-banner" class="stale-banner hidden fixed left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100" role="status" aria-live="polite">
+    <div id="stale-banner" class="stale-banner hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm text-amber-100" role="status" aria-live="polite">
         <i class="fa-solid fa-clock-rotate-left mr-2" aria-hidden="true"></i><span id="stale-banner-text">Data may be outdated.</span>
     </div>
 
     <!-- Navbar -->
-    <nav class="app-nav border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl fixed w-full z-50" aria-label="Main">
+    <nav class="border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl fixed w-full z-50" aria-label="Main">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3 sm:gap-4">
             <div class="flex items-center gap-x-3 flex-shrink-0">
                 <div class="w-9 h-9 bg-blue-600 rounded-2xl flex items-center justify-center" aria-hidden="true">
@@ -76,7 +74,7 @@
     </nav>
 
     <!-- Favorites Bar -->
-    <div class="app-content max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-28 sm:pt-20">
         <div class="flex items-center justify-between mb-2 px-1">
             <div class="text-xs font-semibold text-zinc-400 tracking-widest">FAVORITES</div>
             <div class="flex items-center gap-2">
